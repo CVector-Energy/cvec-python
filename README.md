@@ -4,13 +4,28 @@
 
 This SDK integrates directly with CVector's database. Each tenant has a schema and a database user, both named for the tenant. The API Key is the password of the user. The database user is restricted to only have access to the tenant's schema. Here are the available database tables:
 
+## tag_data
+
+The tag_data table is a Timescale hypertable. Boolean tags are represented within this table using value 0 and 1.
+
 ```sql
 CREATE TABLE tag_data (
     tag_name_id INTEGER NOT NULL,
     tag_value_changed_at TIMESTAMP WITH TIME ZONE,
     tag_value DOUBLE PRECISION
 )
+
+SELECT create_hypertable(
+    '${schema_name}.tag_data',
+    'tag_value_changed_at',
+    chunk_time_interval => INTERVAL '1 hour',
+    if_not_exists => TRUE
+);
 ```
+
+## tag_data_str
+
+The tag_data_str table is a Timescale hypertable.
 
 ```sql
 CREATE TABLE tag_data_str (
@@ -18,7 +33,16 @@ CREATE TABLE tag_data_str (
     tag_value_changed_at timestamptz NOT NULL,
     tag_value text
 );
+
+SELECT create_hypertable(
+    '${schema_name}.tag_data_str',
+    'tag_value_changed_at',
+    chunk_time_interval => INTERVAL '1 hour',
+    if_not_exists => TRUE
+);
 ```
+
+## tag_names
 
 ```sql
 CREATE TABLE tag_names (
@@ -28,6 +52,8 @@ CREATE TABLE tag_names (
     death_at TIMESTAMPTZ NULL
 );
 ```
+
+## metrics
 
 ```sql
 CREATE VIEW metrics AS
