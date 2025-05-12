@@ -8,10 +8,10 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"] # Using a matrix for Python versions
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"] # Using a matrix for Python versions
 
     steps:
     - uses: actions/checkout@v4
