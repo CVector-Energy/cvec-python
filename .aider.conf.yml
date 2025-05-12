@@ -1,0 +1,7 @@
+lint-cmd: 
+  - "python: poetry run black"
+auto-lint: true
+test-cmd: poetry run pytest
+auto-test: true
+read:
+  - README.md
