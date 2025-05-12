@@ -47,7 +47,7 @@ class CVec:
         within the specified [start_at, end_at) interval.
         The function returns a list of time-ranges with the value for each time-range.
         Returns a list of spans. Each span has the following fields:
-        {id, tag_name, value, begin_at, end_at, raw_begin_at, raw_end_at, metadata}.
+        {id, tag_name, value, start_at, end_at, raw_start_at, raw_end_at, metadata}.
         In a future version of the SDK, spans can be annotated, edited, and deleted.
         """
         # Implementation to be added

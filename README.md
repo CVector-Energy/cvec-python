@@ -74,7 +74,7 @@ Setup the SDK with the given host and API Key. The host and API key are loaded f
 
 ## `get_spans(tag_name, ?start_at, ?end_at, ?limit)`
 
-Return all of the time spans where a tag has a constant value within the specified [`start_at`, `end_at`) interval. The function returns a list of time-ranges with the value for each time-range. Returns a list of spans. Each span has the following fields: {id, tag_name, value, begin_at, end_at, raw_begin_at, raw_end_at, metadata}. In a future version of the SDK, spans can be annotated, edited, and deleted.
+Return all of the time spans where a tag has a constant value within the specified [`start_at`, `end_at`) interval. The function returns a list of time-ranges with the value for each time-range. Returns a list of spans. Each span has the following fields: {id, tag_name, value, start_at, end_at, raw_start_at, raw_end_at, metadata}. In a future version of the SDK, spans can be annotated, edited, and deleted.
 
 ## `get_metric_data(?tag_names, ?start_at, ?end_at)`
 
