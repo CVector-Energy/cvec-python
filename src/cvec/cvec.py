@@ -7,7 +7,14 @@ class CVec:
     CVec API Client
     """
 
-    def __init__(self, host=None, tenant=None, api_key=None, default_start_at=None, default_end_at=None):
+    def __init__(
+        self,
+        host=None,
+        tenant=None,
+        api_key=None,
+        default_start_at=None,
+        default_end_at=None,
+    ):
         """
         Setup the SDK with the given host and API Key.
         The host and API key are loaded from environment variables CVEC_HOST,
