@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 
 class CVec:
@@ -13,8 +14,17 @@ class CVec:
         The default_time_range constrains most API keys, and can be overridden
         by the time_range argument to each API function.
         """
-        # Implementation to be added
-        pass
+        self.host = host or os.environ.get("CVEC_HOST")
+        self.tenant = tenant or os.environ.get("CVEC_TENANT")
+        self.api_key = api_key or os.environ.get("CVEC_API_KEY")
+        self.default_time_range = default_time_range
+
+        if not self.host:
+            raise ValueError("CVEC_HOST must be set either as an argument or environment variable")
+        if not self.tenant:
+            raise ValueError("CVEC_TENANT must be set either as an argument or environment variable")
+        if not self.api_key:
+            raise ValueError("CVEC_API_KEY must be set either as an argument or environment variable")
 
     def get_spans(self, tag_name, time_range=None, limit=None):
         """
