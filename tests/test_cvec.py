@@ -11,12 +11,14 @@ class TestCVecConstructor:
             host="test_host",
             tenant="test_tenant",
             api_key="test_api_key",
-            default_time_range="test_range",
+            default_start_at="test_start",
+            default_end_at="test_end",
         )
         assert client.host == "test_host"
         assert client.tenant == "test_tenant"
         assert client.api_key == "test_api_key"
-        assert client.default_time_range == "test_range"
+        assert client.default_start_at == "test_start"
+        assert client.default_end_at == "test_end"
 
     @patch.dict(
         os.environ,
@@ -29,11 +31,12 @@ class TestCVecConstructor:
     )
     def test_constructor_with_env_vars(self):
         """Test CVec constructor with environment variables."""
-        client = CVec(default_time_range="env_range")
+        client = CVec(default_start_at="env_start", default_end_at="env_end")
         assert client.host == "env_host"
         assert client.tenant == "env_tenant"
         assert client.api_key == "env_api_key"
-        assert client.default_time_range == "env_range"
+        assert client.default_start_at == "env_start"
+        assert client.default_end_at == "env_end"
 
     @patch.dict(os.environ, {}, clear=True)
     def test_constructor_missing_host_raises_value_error(self):
@@ -94,9 +97,11 @@ class TestCVecConstructor:
                 host="arg_host",
                 tenant="arg_tenant",
                 api_key="arg_api_key",
-                default_time_range="arg_range",
+                default_start_at="arg_start",
+                default_end_at="arg_end",
             )
             assert client.host == "arg_host"
             assert client.tenant == "arg_tenant"
             assert client.api_key == "arg_api_key"
-            assert client.default_time_range == "arg_range"
+            assert client.default_start_at == "arg_start"
+            assert client.default_end_at == "arg_end"
