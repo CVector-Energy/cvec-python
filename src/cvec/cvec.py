@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 
+
 class CVec:
     """
     CVec API Client
@@ -20,11 +21,17 @@ class CVec:
         self.default_time_range = default_time_range
 
         if not self.host:
-            raise ValueError("CVEC_HOST must be set either as an argument or environment variable")
+            raise ValueError(
+                "CVEC_HOST must be set either as an argument or environment variable"
+            )
         if not self.tenant:
-            raise ValueError("CVEC_TENANT must be set either as an argument or environment variable")
+            raise ValueError(
+                "CVEC_TENANT must be set either as an argument or environment variable"
+            )
         if not self.api_key:
-            raise ValueError("CVEC_API_KEY must be set either as an argument or environment variable")
+            raise ValueError(
+                "CVEC_API_KEY must be set either as an argument or environment variable"
+            )
 
     def get_spans(self, tag_name, time_range=None, limit=None):
         """
