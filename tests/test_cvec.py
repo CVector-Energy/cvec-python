@@ -1,7 +1,7 @@
 import pytest
 import os
 from unittest.mock import patch
-from cvec.cvec import CVec
+from cvec import CVec
 
 
 class TestCVecConstructor:
