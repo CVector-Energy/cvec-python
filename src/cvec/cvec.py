@@ -55,7 +55,7 @@ class CVec:
                 password=self.api_key,
                 host=self.host,
                 dbname=self.tenant,  # Explicitly set dbname for clarity with psycopg3
-                row_factory=dict_row # Set row_factory at connection level
+                row_factory=dict_row,  # Set row_factory at connection level
             )
             return conn
         except psycopg.Error as e:
