@@ -107,11 +107,15 @@ class CVec:
                  WHERE tag_name_id = %s AND tag_value_changed_at >= %s AND tag_value_changed_at < %s)
                 """
                 cur.execute(
-                    query_numeric, (tag_name_id, _start_at, tag_name_id, _start_at, _end_at)
+                    query_numeric,
+                    (tag_name_id, _start_at, tag_name_id, _start_at, _end_at),
                 )
                 for row in cur.fetchall():
                     all_points.append(
-                        {"time": row["tag_value_changed_at"], "value": float(row["tag_value"])}
+                        {
+                            "time": row["tag_value_changed_at"],
+                            "value": float(row["tag_value"]),
+                        }
                     )
 
                 # Query for string data
@@ -127,11 +131,15 @@ class CVec:
                  WHERE tag_name_id = %s AND tag_value_changed_at >= %s AND tag_value_changed_at < %s)
                 """
                 cur.execute(
-                    query_string, (tag_name_id, _start_at, tag_name_id, _start_at, _end_at)
+                    query_string,
+                    (tag_name_id, _start_at, tag_name_id, _start_at, _end_at),
                 )
                 for row in cur.fetchall():
                     all_points.append(
-                        {"time": row["tag_value_changed_at"], "value": str(row["tag_value"])}
+                        {
+                            "time": row["tag_value_changed_at"],
+                            "value": str(row["tag_value"]),
+                        }
                     )
 
                 # Sort all collected points by time
@@ -154,8 +162,10 @@ class CVec:
                         span_actual_end = min(next_raw_event_at, _end_at)
                     else:
                         span_actual_end = _end_at
-                    
-                    if span_actual_start < span_actual_end:  # Ensure span has positive duration
+
+                    if (
+                        span_actual_start < span_actual_end
+                    ):  # Ensure span has positive duration
                         spans.append(
                             {
                                 "id": None,
@@ -168,10 +178,12 @@ class CVec:
                                 "metadata": None,
                             }
                         )
-                
-                if limit is not None and limit >= 0: # allow limit=0 to return empty list
+
+                if (
+                    limit is not None and limit >= 0
+                ):  # allow limit=0 to return empty list
                     spans = spans[:limit]
-                
+
                 return spans
         finally:
             if conn:
