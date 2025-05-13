@@ -1,8 +1,8 @@
 import os
 
 import pandas as pd
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg
+from psycopg.rows import dict_row
 
 from .span import Span
 
@@ -49,16 +49,16 @@ class CVec:
     def _get_db_connection(self):
         """Helper method to establish a database connection."""
         try:
-            # psycopg2 defaults to using the username as dbname if not specified.
-            # Here, self.tenant is used for both user and (implicitly) dbname.
-            conn = psycopg2.connect(
+            # psycopg3 connection string uses 'user', 'password', 'host', 'dbname'
+            conn = psycopg.connect(
                 user=self.tenant,
                 password=self.api_key,
                 host=self.host,
-                # dbname=self.tenant # Implicitly self.tenant if not provided
+                dbname=self.tenant,  # Explicitly set dbname for clarity with psycopg3
+                row_factory=dict_row # Set row_factory at connection level
             )
             return conn
-        except psycopg2.Error as e:
+        except psycopg.Error as e:
             # Consider logging this error or raising a custom exception
             print(f"Database connection error: {e}")
             raise
@@ -96,7 +96,9 @@ class CVec:
         conn = None
         try:
             conn = self._get_db_connection()
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            # In psycopg3, if row_factory is set at connection, cursors inherit it.
+            # Otherwise, cur = conn.cursor(row_factory=dict_row)
+            with conn.cursor() as cur:
                 # 1. Get tag_name_id
                 query_tag_id = (
                     f"SELECT id FROM {self.tenant}.tag_names WHERE normalized_name = %s"
