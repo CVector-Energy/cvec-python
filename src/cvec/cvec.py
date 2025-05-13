@@ -106,19 +106,10 @@ class CVec:
                 # 2. Fetch data points from tag_data (numeric) and tag_data_str (text)
                 all_points = []
 
-                # Build WHERE clause and params for queries
-                where_conditions = ["tag_name_id = %s"]
-                query_params = [tag_name_id]
-
-                if _start_at is not None:
-                    where_conditions.append("tag_value_changed_at >= %s")
-                    query_params.append(_start_at)
-
-                if _end_at is not None:
-                    where_conditions.append("tag_value_changed_at < %s")
-                    query_params.append(_end_at)
-
-                where_sql = " AND ".join(where_conditions)
+                # Define a static WHERE clause that handles NULL _start_at/_end_at for unbounded intervals
+                where_sql = "tag_name_id = %s AND (tag_value_changed_at >= %s OR %s IS NULL) AND (tag_value_changed_at < %s OR %s IS NULL)"
+                # Parameters for the database query, matching the placeholders in where_sql
+                db_query_params = (tag_name_id, _start_at, _start_at, _end_at, _end_at)
 
                 # Query for numeric data
                 query_numeric = f"""
@@ -127,7 +118,7 @@ class CVec:
                  WHERE {where_sql}
                  ORDER BY tag_value_changed_at ASC
                 """
-                cur.execute(query_numeric, tuple(query_params))
+                cur.execute(query_numeric, db_query_params)
                 for row in cur.fetchall():
                     all_points.append(
                         {
@@ -143,7 +134,7 @@ class CVec:
                  WHERE {where_sql}
                  ORDER BY tag_value_changed_at ASC
                 """
-                cur.execute(query_string, tuple(query_params))
+                cur.execute(query_string, db_query_params)
                 for row in cur.fetchall():
                     all_points.append(
                         {
