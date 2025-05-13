@@ -48,20 +48,13 @@ class CVec:
 
     def _get_db_connection(self):
         """Helper method to establish a database connection."""
-        try:
-            # psycopg3 connection string uses 'user', 'password', 'host', 'dbname'
-            conn = psycopg.connect(
+        return psycopg.connect(
                 user=self.tenant,
                 password=self.api_key,
                 host=self.host,
-                dbname=self.tenant,  # Explicitly set dbname for clarity with psycopg3
-                row_factory=dict_row,  # Set row_factory at connection level
+                dbname=self.tenant,
+                row_factory=dict_row,
             )
-            return conn
-        except psycopg.Error as e:
-            # Consider logging this error or raising a custom exception
-            print(f"Database connection error: {e}")
-            raise
 
     def get_spans(self, tag_name, start_at=None, end_at=None, limit=None):
         """
@@ -96,8 +89,6 @@ class CVec:
         conn = None
         try:
             conn = self._get_db_connection()
-            # In psycopg3, if row_factory is set at connection, cursors inherit it.
-            # Otherwise, cur = conn.cursor(row_factory=dict_row)
             with conn.cursor() as cur:
                 # 1. Get tag_name_id
                 query_tag_id = f"SELECT id FROM {self.tenant}.tag_names WHERE normalized_name = %(tag_name)s"
