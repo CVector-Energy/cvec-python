@@ -1,5 +1,7 @@
 import os
 import pandas as pd
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 
 class CVec:
@@ -41,6 +43,23 @@ class CVec:
                 "CVEC_API_KEY must be set either as an argument or environment variable"
             )
 
+    def _get_db_connection(self):
+        """Helper method to establish a database connection."""
+        try:
+            # psycopg2 defaults to using the username as dbname if not specified.
+            # Here, self.tenant is used for both user and (implicitly) dbname.
+            conn = psycopg2.connect(
+                user=self.tenant,
+                password=self.api_key,
+                host=self.host,
+                # dbname=self.tenant # Implicitly self.tenant if not provided
+            )
+            return conn
+        except psycopg2.Error as e:
+            # Consider logging this error or raising a custom exception
+            print(f"Database connection error: {e}")
+            raise
+
     def get_spans(self, tag_name, start_at=None, end_at=None, limit=None):
         """
         Return all of the time spans where a tag has a constant value
@@ -50,8 +69,113 @@ class CVec:
         {id, tag_name, value, start_at, end_at, raw_start_at, raw_end_at, metadata}.
         In a future version of the SDK, spans can be annotated, edited, and deleted.
         """
-        # Implementation to be added
-        return []
+        _start_at = start_at or self.default_start_at
+        _end_at = end_at or self.default_end_at
+
+        if not _start_at or not _end_at:
+            raise ValueError(
+                "Effective start_at and end_at must be provided either as arguments or class defaults."
+            )
+
+        conn = None
+        try:
+            conn = self._get_db_connection()
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # 1. Get tag_name_id
+                query_tag_id = (
+                    f"SELECT id FROM {self.tenant}.tag_names WHERE normalized_name = %s"
+                )
+                cur.execute(query_tag_id, (tag_name,))
+                tag_row = cur.fetchone()
+                if not tag_row:
+                    return []  # Tag not found
+                tag_name_id = tag_row["id"]
+
+                # 2. Fetch data points from tag_data (numeric) and tag_data_str (text)
+                all_points = []
+
+                # Query for numeric data
+                query_numeric = f"""
+                (SELECT tag_value_changed_at, tag_value
+                 FROM {self.tenant}.tag_data
+                 WHERE tag_name_id = %s AND tag_value_changed_at < %s
+                 ORDER BY tag_value_changed_at DESC
+                 LIMIT 1)
+                UNION ALL
+                (SELECT tag_value_changed_at, tag_value
+                 FROM {self.tenant}.tag_data
+                 WHERE tag_name_id = %s AND tag_value_changed_at >= %s AND tag_value_changed_at < %s)
+                """
+                cur.execute(
+                    query_numeric, (tag_name_id, _start_at, tag_name_id, _start_at, _end_at)
+                )
+                for row in cur.fetchall():
+                    all_points.append(
+                        {"time": row["tag_value_changed_at"], "value": float(row["tag_value"])}
+                    )
+
+                # Query for string data
+                query_string = f"""
+                (SELECT tag_value_changed_at, tag_value
+                 FROM {self.tenant}.tag_data_str
+                 WHERE tag_name_id = %s AND tag_value_changed_at < %s
+                 ORDER BY tag_value_changed_at DESC
+                 LIMIT 1)
+                UNION ALL
+                (SELECT tag_value_changed_at, tag_value
+                 FROM {self.tenant}.tag_data_str
+                 WHERE tag_name_id = %s AND tag_value_changed_at >= %s AND tag_value_changed_at < %s)
+                """
+                cur.execute(
+                    query_string, (tag_name_id, _start_at, tag_name_id, _start_at, _end_at)
+                )
+                for row in cur.fetchall():
+                    all_points.append(
+                        {"time": row["tag_value_changed_at"], "value": str(row["tag_value"])}
+                    )
+
+                # Sort all collected points by time
+                all_points.sort(key=lambda p: p["time"])
+
+                if not all_points:
+                    return []
+
+                spans = []
+                # 3. Construct spans
+                for i, point in enumerate(all_points):
+                    current_raw_start_at = point["time"]
+                    current_value = point["value"]
+
+                    span_actual_start = max(current_raw_start_at, _start_at)
+
+                    next_raw_event_at = None
+                    if i + 1 < len(all_points):
+                        next_raw_event_at = all_points[i + 1]["time"]
+                        span_actual_end = min(next_raw_event_at, _end_at)
+                    else:
+                        span_actual_end = _end_at
+                    
+                    if span_actual_start < span_actual_end:  # Ensure span has positive duration
+                        spans.append(
+                            {
+                                "id": None,
+                                "tag_name": tag_name,
+                                "value": current_value,
+                                "start_at": span_actual_start,
+                                "end_at": span_actual_end,
+                                "raw_start_at": current_raw_start_at,
+                                "raw_end_at": next_raw_event_at,
+                                "metadata": None,
+                            }
+                        )
+                
+                if limit is not None and limit >= 0: # allow limit=0 to return empty list
+                    spans = spans[:limit]
+                
+                return spans
+        finally:
+            if conn:
+                conn.close()
 
     def get_metric_data(self, tag_names=None, start_at=None, end_at=None):
         """
