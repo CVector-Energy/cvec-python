@@ -49,12 +49,12 @@ class CVec:
     def _get_db_connection(self):
         """Helper method to establish a database connection."""
         return psycopg.connect(
-                user=self.tenant,
-                password=self.api_key,
-                host=self.host,
-                dbname=self.tenant,
-                row_factory=dict_row,
-            )
+            user=self.tenant,
+            password=self.api_key,
+            host=self.host,
+            dbname=self.tenant,
+            row_factory=dict_row,
+        )
 
     def get_spans(self, tag_name, start_at=None, end_at=None, limit=None):
         """
