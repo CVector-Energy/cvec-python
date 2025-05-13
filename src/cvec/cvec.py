@@ -117,9 +117,17 @@ class CVec:
                 # Each part of the UNION ALL gets the same WHERE clause parameters.
                 # The final sql_limit_value is for the LIMIT clause.
                 union_db_query_params = (
-                    tag_name_id, _start_at, _start_at, _end_at, _end_at,  # For tag_data
-                    tag_name_id, _start_at, _start_at, _end_at, _end_at,  # For tag_data_str
-                    sql_limit_value  # For the final LIMIT clause
+                    tag_name_id,
+                    _start_at,
+                    _start_at,
+                    _end_at,
+                    _end_at,  # For tag_data
+                    tag_name_id,
+                    _start_at,
+                    _start_at,
+                    _end_at,
+                    _end_at,  # For tag_data_str
+                    sql_limit_value,  # For the final LIMIT clause
                 )
 
                 # Combined query for numeric and string data
