@@ -133,24 +133,19 @@ class CVec:
                     for row in cur.fetchall()
                 ]
 
-                spans = []
-                for i, point in enumerate(all_points):
-                    current_raw_start_at = point["time"]
-                    current_value = point["value"]
-                    next_raw_event_at = all_points[i + 1]["time"] if i + 1 < len(all_points) else None
-
-                    spans.append(
-                        Span(
-                            id=None,
-                            tag_name=tag_name,
-                            value=current_value,
-                            start_at=current_raw_start_at, # TODO: lookup span override start_at
-                            end_at=next_raw_event_at, # TODO: lookup span override end_at
-                            raw_start_at=current_raw_start_at,
-                            raw_end_at=next_raw_event_at,
-                            metadata=None,
-                        )
+                spans = [
+                    Span(
+                        id=None,
+                        tag_name=tag_name,
+                        value=point["value"],
+                        start_at=point["time"],  # TODO: lookup span override start_at
+                        end_at=all_points[i + 1]["time"] if i + 1 < len(all_points) else None,  # TODO: lookup span override end_at
+                        raw_start_at=point["time"],
+                        raw_end_at=all_points[i + 1]["time"] if i + 1 < len(all_points) else None,
+                        metadata=None,
                     )
+                    for i, point in enumerate(all_points)
+                ]
                 return spans
         finally:
             if conn:
