@@ -106,16 +106,21 @@ class CVec:
                 # 2. Fetch data points from tag_data (numeric) and tag_data_str (text)
                 all_points = []
 
-                # Parameters for each part of the UNION ALL query.
-                # The tuple (tag_name_id, _start_at, _start_at, _end_at, _end_at)
-                # is repeated for the numeric and string parts of the query.
+                # Calculate the limit for the SQL query.
+                # We fetch limit + 1 points to correctly determine the end_at for the limit-th span.
+                # If limit is None or negative, sql_limit will be None (LIMIT NULL in SQL, meaning no limit).
+                sql_limit_value = None
+                if limit is not None and limit >= 0:
+                    sql_limit_value = limit + 1
+
+                # Parameters for the database query.
+                # Each part of the UNION ALL gets the same WHERE clause parameters.
+                # The final sql_limit_value is for the LIMIT clause.
                 union_db_query_params = (
-                    tag_name_id,
-                    _start_at,
-                    _start_at,
-                    _end_at,
-                    _end_at,
-                ) * 2
+                    tag_name_id, _start_at, _start_at, _end_at, _end_at,  # For tag_data
+                    tag_name_id, _start_at, _start_at, _end_at, _end_at,  # For tag_data_str
+                    sql_limit_value  # For the final LIMIT clause
+                )
 
                 # Combined query for numeric and string data
                 combined_query = f"""
@@ -133,6 +138,7 @@ class CVec:
                 FROM {self.tenant}.tag_data_str
                 WHERE tag_name_id = %s AND (tag_value_changed_at >= %s OR %s IS NULL) AND (tag_value_changed_at < %s OR %s IS NULL)
                 ORDER BY tag_value_changed_at ASC
+                LIMIT %s
                 """
                 cur.execute(combined_query, union_db_query_params)
                 for row in cur.fetchall():
