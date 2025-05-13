@@ -117,32 +117,26 @@ class CVec:
                 LIMIT %(limit)s
                 """
                 cur.execute(combined_query, query_params)
-                all_points = [
-                    {
-                        "time": row["tag_value_changed_at"],
-                        "value": (
-                            row["value_double"]
-                            if row["value_double"] is not None
-                            else row["value_string"]
-                        ),
-                    }
-                    for row in cur.fetchall()
-                ]
+                db_rows = cur.fetchall()
 
                 spans = [
                     Span(
                         id=None,
                         tag_name=tag_name,
-                        value=point["value"],
-                        raw_start_at=point["time"],
+                        value=(
+                            row["value_double"]
+                            if row["value_double"] is not None
+                            else row["value_string"]
+                        ),
+                        raw_start_at=row["tag_value_changed_at"],
                         raw_end_at=(
-                            all_points[i + 1]["time"]
-                            if i + 1 < len(all_points)
+                            db_rows[i + 1]["tag_value_changed_at"]
+                            if i + 1 < len(db_rows)
                             else None
                         ),
                         metadata=None,
                     )
-                    for i, point in enumerate(all_points)
+                    for i, row in enumerate(db_rows)
                 ]
                 return spans
         finally:
