@@ -156,7 +156,11 @@ class CVec:
                 all_points = [
                     {
                         "time": row["tag_value_changed_at"],
-                        "value": row["value_double"] if row["value_double"] is not None else row["value_string"],
+                        "value": (
+                            row["value_double"]
+                            if row["value_double"] is not None
+                            else row["value_string"]
+                        ),
                     }
                     for row in cur.fetchall()
                 ]
