@@ -100,9 +100,7 @@ class CVec:
             # Otherwise, cur = conn.cursor(row_factory=dict_row)
             with conn.cursor() as cur:
                 # 1. Get tag_name_id
-                query_tag_id = (
-                    f"SELECT id FROM {self.tenant}.tag_names WHERE normalized_name = %(tag_name)s"
-                )
+                query_tag_id = f"SELECT id FROM {self.tenant}.tag_names WHERE normalized_name = %(tag_name)s"
                 cur.execute(query_tag_id, {"tag_name": tag_name})
                 tag_row = cur.fetchone()
                 if not tag_row:
