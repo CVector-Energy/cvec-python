@@ -81,11 +81,11 @@ Each `Span` object in the returned list represents a period where the tag's valu
 - `value`: The tag's value during the span.
 - `tag_name`: The name of the tag.
 - `raw_start_at`: The timestamp of the value change that initiated this span's value. This will be greater than or equal to the query's `start_at` if one was specified.
-- `raw_end_at`: The timestamp of the next value change for this tag found by the query. This will be `None` if no subsequent change is found within the query window (e.g., before the query's `end_at` or indefinitely if `end_at` is `None`). If the query's `end_at` is not specified (i.e., `None`) and there is no subsequent value change found by the query, this field will be `None`, indicating the span continues indefinitely.
+- `raw_end_at`: The timestamp marking the end of this span's constant value. For the newest span (first in the returned list), this is the query's `end_at` parameter (if specified, otherwise `None`). For other spans, it's the `raw_start_at` of the chronologically newer preceding span in the list. If the query's `end_at` is not specified and it's the newest span based on available data, this field will be `None`, indicating the span continues indefinitely.
 - `id`: Currently `None`. In a future version of the SDK, this will be the span's unique identifier.
 - `metadata`: Currently `None`. In a future version, this can be used to store annotations or other metadata related to the span.
 
-Returns a list of `Span` objects.
+Returns a list of `Span` objects, sorted in descending chronological order (newest span first).
 If no relevant value changes are found, an empty list is returned.
 
 ## `get_metric_data(?tag_names, ?start_at, ?end_at)`
