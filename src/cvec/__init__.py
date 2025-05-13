@@ -1,3 +1,3 @@
-from .cvec import CVec
+from .cvec import CVec, Span
 
-__all__ = ["CVec"]
+__all__ = ["CVec", "Span"]
