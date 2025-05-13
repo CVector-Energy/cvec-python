@@ -101,9 +101,9 @@ class CVec:
             with conn.cursor() as cur:
                 # 1. Get tag_name_id
                 query_tag_id = (
-                    f"SELECT id FROM {self.tenant}.tag_names WHERE normalized_name = %s"
+                    f"SELECT id FROM {self.tenant}.tag_names WHERE normalized_name = %(tag_name)s"
                 )
-                cur.execute(query_tag_id, (tag_name,))
+                cur.execute(query_tag_id, {"tag_name": tag_name})
                 tag_row = cur.fetchone()
                 if not tag_row:
                     return []  # Tag not found
@@ -118,19 +118,12 @@ class CVec:
                 # Parameters for the database query.
                 # Each part of the UNION ALL gets the same WHERE clause parameters.
                 # The final sql_limit_value is for the LIMIT clause.
-                union_db_query_params = (
-                    tag_name_id,
-                    _start_at,
-                    _start_at,
-                    _end_at,
-                    _end_at,  # For tag_data
-                    tag_name_id,
-                    _start_at,
-                    _start_at,
-                    _end_at,
-                    _end_at,  # For tag_data_str
-                    sql_limit_value,  # For the final LIMIT clause
-                )
+                union_db_query_params = {
+                    "tag_name_id": tag_name_id,
+                    "start_at": _start_at,
+                    "end_at": _end_at,
+                    "limit": sql_limit_value,
+                }
 
                 # Combined query for numeric and string data
                 combined_query = f"""
@@ -139,16 +132,16 @@ class CVec:
                     tag_value AS value_double,
                     NULL::text AS value_string
                 FROM tag_data
-                WHERE tag_name_id = %s AND (tag_value_changed_at >= %s OR %s IS NULL) AND (tag_value_changed_at < %s OR %s IS NULL)
+                WHERE tag_name_id = %(tag_name_id)s AND (tag_value_changed_at >= %(start_at)s OR %(start_at)s IS NULL) AND (tag_value_changed_at < %(end_at)s OR %(end_at)s IS NULL)
                 UNION ALL
                 SELECT
                     tag_value_changed_at,
                     NULL::double precision AS value_double,
                     tag_value AS value_string
                 FROM tag_data_str
-                WHERE tag_name_id = %s AND (tag_value_changed_at >= %s OR %s IS NULL) AND (tag_value_changed_at < %s OR %s IS NULL)
+                WHERE tag_name_id = %(tag_name_id)s AND (tag_value_changed_at >= %(start_at)s OR %(start_at)s IS NULL) AND (tag_value_changed_at < %(end_at)s OR %(end_at)s IS NULL)
                 ORDER BY tag_value_changed_at ASC
-                LIMIT %s
+                LIMIT %(limit)s
                 """
                 cur.execute(combined_query, union_db_query_params)
                 all_points = [
