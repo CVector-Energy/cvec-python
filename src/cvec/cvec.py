@@ -107,12 +107,8 @@ class CVec:
                     return []  # Tag not found
                 tag_name_id = tag_row["id"]
 
-                # 2. Fetch data points from tag_data (numeric) and tag_data_str (text)
-                all_points = []
-
-                # Calculate the limit for the SQL query.
-                # We fetch limit + 1 points to correctly determine the end_at for the limit-th span.
-                # If limit is None or negative, sql_limit will be None (LIMIT NULL in SQL, meaning no limit).
+                # Fetch limit + 1 points to correctly determine the end_at for the limit-th span.
+                # If limit is None or negative, sql_limit will be None (LIMIT NULL in PostgreSQL, meaning no limit).
                 sql_limit_value = None
                 if limit is not None and limit >= 0:
                     sql_limit_value = limit + 1
@@ -140,14 +136,14 @@ class CVec:
                     tag_value_changed_at,
                     tag_value AS value_double,
                     NULL::text AS value_string
-                FROM {self.tenant}.tag_data
+                FROM tag_data
                 WHERE tag_name_id = %s AND (tag_value_changed_at >= %s OR %s IS NULL) AND (tag_value_changed_at < %s OR %s IS NULL)
                 UNION ALL
                 SELECT
                     tag_value_changed_at,
                     NULL::double precision AS value_double,
                     tag_value AS value_string
-                FROM {self.tenant}.tag_data_str
+                FROM tag_data_str
                 WHERE tag_name_id = %s AND (tag_value_changed_at >= %s OR %s IS NULL) AND (tag_value_changed_at < %s OR %s IS NULL)
                 ORDER BY tag_value_changed_at ASC
                 LIMIT %s
@@ -164,9 +160,6 @@ class CVec:
                     }
                     for row in cur.fetchall()
                 ]
-
-                if not all_points:
-                    return []
 
                 spans = []
                 # 3. Construct spans
@@ -205,12 +198,6 @@ class CVec:
                                 metadata=None,
                             )
                         )
-
-                if (
-                    limit is not None and limit >= 0
-                ):  # allow limit=0 to return empty list
-                    spans = spans[:limit]
-
                 return spans
         finally:
             if conn:
