@@ -65,11 +65,9 @@ class CVec:
         Return time spans for a tag, where each span's value is initiated by a
         value change occurring within the specified [start_at, end_at) interval.
 
-        This function identifies all `tag_value_changed_at` timestamps for the
-        given `tag_name` that are greater than or equal to `start_at` and less
-        than `end_at`. For each such timestamp (let's call it `event_time`),
-        a span is generated:
-        - `value`: The tag's value that was set at `event_time`.
+        This function finds all spans where the metric value is constant that begin within the
+        specified interval:
+        - `value`: The tag's value during the span time period.
         - `tag_name`: The name of the tag.
         - `start_at`: Equal to `event_time`.
         - `raw_start_at`: Equal to `event_time`.
