@@ -106,16 +106,14 @@ class CVec:
                 # 2. Fetch data points from tag_data (numeric) and tag_data_str (text)
                 all_points = []
 
-                # Define a static WHERE clause that handles NULL _start_at/_end_at for unbounded intervals
-                where_sql = "tag_name_id = %s AND (tag_value_changed_at >= %s OR %s IS NULL) AND (tag_value_changed_at < %s OR %s IS NULL)"
-                # Parameters for the database query, matching the placeholders in where_sql
+                # Parameters for the database query, matching the placeholders in the WHERE clause below
                 db_query_params = (tag_name_id, _start_at, _start_at, _end_at, _end_at)
 
                 # Query for numeric data
                 query_numeric = f"""
                 SELECT tag_value_changed_at, tag_value
                  FROM {self.tenant}.tag_data
-                 WHERE {where_sql}
+                 WHERE tag_name_id = %s AND (tag_value_changed_at >= %s OR %s IS NULL) AND (tag_value_changed_at < %s OR %s IS NULL)
                  ORDER BY tag_value_changed_at ASC
                 """
                 cur.execute(query_numeric, db_query_params)
@@ -131,7 +129,7 @@ class CVec:
                 query_string = f"""
                 SELECT tag_value_changed_at, tag_value
                  FROM {self.tenant}.tag_data_str
-                 WHERE {where_sql}
+                 WHERE tag_name_id = %s AND (tag_value_changed_at >= %s OR %s IS NULL) AND (tag_value_changed_at < %s OR %s IS NULL)
                  ORDER BY tag_value_changed_at ASC
                 """
                 cur.execute(query_string, db_query_params)
