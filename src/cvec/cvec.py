@@ -94,7 +94,6 @@ class CVec:
                     "tag_name": tag_name,
                     "start_at": _start_at,
                     "end_at": _end_at,
-
                     # Fetch limit + 1 points to correctly determine the end_at for the limit-th
                     # span. If limit is None or negative, sql_limit will be None (LIMIT NULL in
                     # PostgreSQL, meaning no limit).
@@ -139,9 +138,17 @@ class CVec:
                         tag_name=tag_name,
                         value=point["value"],
                         start_at=point["time"],  # TODO: lookup span override start_at
-                        end_at=all_points[i + 1]["time"] if i + 1 < len(all_points) else None,  # TODO: lookup span override end_at
+                        end_at=(
+                            all_points[i + 1]["time"]
+                            if i + 1 < len(all_points)
+                            else None
+                        ),  # TODO: lookup span override end_at
                         raw_start_at=point["time"],
-                        raw_end_at=all_points[i + 1]["time"] if i + 1 < len(all_points) else None,
+                        raw_end_at=(
+                            all_points[i + 1]["time"]
+                            if i + 1 < len(all_points)
+                            else None
+                        ),
                         metadata=None,
                     )
                     for i, point in enumerate(all_points)
