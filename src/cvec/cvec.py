@@ -62,12 +62,31 @@ class CVec:
 
     def get_spans(self, tag_name, start_at=None, end_at=None, limit=None):
         """
-        Return all of the time spans where a tag has a constant value
-        within the specified [start_at, end_at) interval.
-        The function returns a list of time-ranges with the value for each time-range.
-        Returns a list of spans. Each span has the following fields:
-        {id, tag_name, value, start_at, end_at, raw_start_at, raw_end_at, metadata}.
-        In a future version of the SDK, spans can be annotated, edited, and deleted.
+        Return time spans for a tag, where each span's value is initiated by a
+        value change occurring within the specified [start_at, end_at) interval.
+
+        This function identifies all `tag_value_changed_at` timestamps for the
+        given `tag_name` that are greater than or equal to `start_at` and less
+        than `end_at`. For each such timestamp (let's call it `event_time`),
+        a span is generated:
+        - `value`: The tag's value that was set at `event_time`.
+        - `tag_name`: The name of the tag.
+        - `start_at`: Equal to `event_time`.
+        - `raw_start_at`: Equal to `event_time`.
+        - `end_at`: The timestamp of the next value change for this tag, or the
+          query's `end_at` parameter, whichever is earlier. If there is no
+          subsequent value change up to the query's `end_at`, this will be the
+          query's `end_at`.
+        - `raw_end_at`: The timestamp of the next value change for this tag, if
+          another change is found by the query (i.e., before `end_at`).
+          Otherwise, `None`.
+        - `id`: Currently `None`.
+        - `metadata`: Currently `None`.
+
+        Returns a list of dictionaries, where each dictionary represents a span.
+        If no value changes occur for the tag within the specified interval, an
+        empty list is returned.
+        The `limit` parameter restricts the number of spans returned.
         """
         _start_at = start_at or self.default_start_at
         _end_at = end_at or self.default_end_at
@@ -96,19 +115,14 @@ class CVec:
 
                 # Query for numeric data
                 query_numeric = f"""
-                (SELECT tag_value_changed_at, tag_value
+                SELECT tag_value_changed_at, tag_value
                  FROM {self.tenant}.tag_data
-                 WHERE tag_name_id = %s AND tag_value_changed_at < %s
-                 ORDER BY tag_value_changed_at DESC
-                 LIMIT 1)
-                UNION ALL
-                (SELECT tag_value_changed_at, tag_value
-                 FROM {self.tenant}.tag_data
-                 WHERE tag_name_id = %s AND tag_value_changed_at >= %s AND tag_value_changed_at < %s)
+                 WHERE tag_name_id = %s AND tag_value_changed_at >= %s AND tag_value_changed_at < %s
+                 ORDER BY tag_value_changed_at ASC
                 """
                 cur.execute(
                     query_numeric,
-                    (tag_name_id, _start_at, tag_name_id, _start_at, _end_at),
+                    (tag_name_id, _start_at, _end_at),
                 )
                 for row in cur.fetchall():
                     all_points.append(
@@ -120,19 +134,14 @@ class CVec:
 
                 # Query for string data
                 query_string = f"""
-                (SELECT tag_value_changed_at, tag_value
+                SELECT tag_value_changed_at, tag_value
                  FROM {self.tenant}.tag_data_str
-                 WHERE tag_name_id = %s AND tag_value_changed_at < %s
-                 ORDER BY tag_value_changed_at DESC
-                 LIMIT 1)
-                UNION ALL
-                (SELECT tag_value_changed_at, tag_value
-                 FROM {self.tenant}.tag_data_str
-                 WHERE tag_name_id = %s AND tag_value_changed_at >= %s AND tag_value_changed_at < %s)
+                 WHERE tag_name_id = %s AND tag_value_changed_at >= %s AND tag_value_changed_at < %s
+                 ORDER BY tag_value_changed_at ASC
                 """
                 cur.execute(
                     query_string,
-                    (tag_name_id, _start_at, tag_name_id, _start_at, _end_at),
+                    (tag_name_id, _start_at, _end_at),
                 )
                 for row in cur.fetchall():
                     all_points.append(
@@ -154,7 +163,7 @@ class CVec:
                     current_raw_start_at = point["time"]
                     current_value = point["value"]
 
-                    span_actual_start = max(current_raw_start_at, _start_at)
+                    span_actual_start = current_raw_start_at # Query now ensures current_raw_start_at >= _start_at
 
                     next_raw_event_at = None
                     if i + 1 < len(all_points):

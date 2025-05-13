@@ -74,7 +74,15 @@ Setup the SDK with the given host and API Key. The host and API key are loaded f
 
 ## `get_spans(tag_name, ?start_at, ?end_at, ?limit)`
 
-Return all of the time spans where a tag has a constant value within the specified [`start_at`, `end_at`) interval. The function returns a list of time-ranges with the value for each time-range. Returns a list of spans. Each span has the following fields: {id, tag_name, value, start_at, end_at, raw_start_at, raw_end_at, metadata}. In a future version of the SDK, spans can be annotated, edited, and deleted.
+Return time spans for a tag, where each span's value is initiated by a value change occurring *within* the specified [`start_at`, `end_at`) interval.
+
+This function identifies all `tag_value_changed_at` timestamps for the given `tag_name` that are greater than or equal to `start_at` and less than `end_at`. For each such timestamp (`event_time`):
+- The span's `value` is the value set at `event_time`.
+- The span's `start_at` (and `raw_start_at`) is `event_time`.
+- The span's `end_at` is the earlier of the next `tag_value_changed_at` timestamp for this tag, or the query's `end_at`.
+- The span's `raw_end_at` is the timestamp of the next `tag_value_changed_at` (if one occurs before the query's `end_at`), or `None`.
+
+Returns a list of spans. Each span has the following fields: {id, tag_name, value, start_at, end_at, raw_start_at, raw_end_at, metadata}. In a future version of the SDK, spans can be annotated, edited, and deleted.
 
 ## `get_metric_data(?tag_names, ?start_at, ?end_at)`
 
