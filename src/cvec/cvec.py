@@ -106,38 +106,40 @@ class CVec:
                 # 2. Fetch data points from tag_data (numeric) and tag_data_str (text)
                 all_points = []
 
-                # Parameters for the database query, matching the placeholders in the WHERE clause below
-                db_query_params = (tag_name_id, _start_at, _start_at, _end_at, _end_at)
+                # Parameters for each part of the UNION ALL query.
+                # The tuple (tag_name_id, _start_at, _start_at, _end_at, _end_at)
+                # is repeated for the numeric and string parts of the query.
+                union_db_query_params = (tag_name_id, _start_at, _start_at, _end_at, _end_at) * 2
 
-                # Query for numeric data
-                query_numeric = f"""
-                SELECT tag_value_changed_at, tag_value
-                 FROM {self.tenant}.tag_data
-                 WHERE tag_name_id = %s AND (tag_value_changed_at >= %s OR %s IS NULL) AND (tag_value_changed_at < %s OR %s IS NULL)
-                 ORDER BY tag_value_changed_at ASC
+                # Combined query for numeric and string data
+                combined_query = f"""
+                SELECT tag_value_changed_at, CAST(tag_value AS TEXT) AS tag_value, 'numeric' AS value_type
+                FROM {self.tenant}.tag_data
+                WHERE tag_name_id = %s AND (tag_value_changed_at >= %s OR %s IS NULL) AND (tag_value_changed_at < %s OR %s IS NULL)
+                UNION ALL
+                SELECT tag_value_changed_at, tag_value, 'string' AS value_type
+                FROM {self.tenant}.tag_data_str
+                WHERE tag_name_id = %s AND (tag_value_changed_at >= %s OR %s IS NULL) AND (tag_value_changed_at < %s OR %s IS NULL)
+                ORDER BY tag_value_changed_at ASC
                 """
-                cur.execute(query_numeric, db_query_params)
+                cur.execute(combined_query, union_db_query_params)
                 for row in cur.fetchall():
+                    value = row["tag_value"]  # This is TEXT due to CAST or original type
+                    if row["value_type"] == 'numeric':
+                        if value is not None:  # Avoid float(None) which raises TypeError
+                            try:
+                                value = float(value)
+                            except ValueError:
+                                # This might occur if CAST to TEXT results in a string not convertible to float,
+                                # though float() handles 'Infinity', '-Infinity', 'NaN' from strings.
+                                # Log a warning and keep the value as a string in such edge cases.
+                                print(f"Warning: Could not convert supposed numeric value '{value}' to float.")
+                    # If value_type is 'string', value is already a string (or None if DB NULL).
+                    # If value was NULL in the database, it remains Python None for both types.
                     all_points.append(
                         {
                             "time": row["tag_value_changed_at"],
-                            "value": float(row["tag_value"]),
-                        }
-                    )
-
-                # Query for string data
-                query_string = f"""
-                SELECT tag_value_changed_at, tag_value
-                 FROM {self.tenant}.tag_data_str
-                 WHERE tag_name_id = %s AND (tag_value_changed_at >= %s OR %s IS NULL) AND (tag_value_changed_at < %s OR %s IS NULL)
-                 ORDER BY tag_value_changed_at ASC
-                """
-                cur.execute(query_string, db_query_params)
-                for row in cur.fetchall():
-                    all_points.append(
-                        {
-                            "time": row["tag_value_changed_at"],
-                            "value": str(row["tag_value"]),
+                            "value": value,
                         }
                     )
 
