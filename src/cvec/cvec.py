@@ -90,38 +90,32 @@ class CVec:
         try:
             conn = self._get_db_connection()
             with conn.cursor() as cur:
-                # Fetch limit + 1 points to correctly determine the end_at for the limit-th span.
-                # If limit is None or negative, sql_limit will be None (LIMIT NULL in PostgreSQL, meaning no limit).
-                sql_limit_value = None
-                if limit is not None and limit >= 0:
-                    sql_limit_value = limit + 1
-
-                # Parameters for the database query.
-                # Each part of the UNION ALL gets the same WHERE clause parameters.
-                # The final sql_limit_value is for the LIMIT clause.
                 query_params = {
                     "tag_name": tag_name,
                     "start_at": _start_at,
                     "end_at": _end_at,
-                    "limit": sql_limit_value,
+
+                    # Fetch limit + 1 points to correctly determine the end_at for the limit-th
+                    # span. If limit is None or negative, sql_limit will be None (LIMIT NULL in
+                    # PostgreSQL, meaning no limit).
+                    "limit": limit + 1 if limit is not None and limit >= 0 else None,
                 }
 
-                # Combined query for numeric and string data
                 combined_query = f"""
                 SELECT
                     td.tag_value_changed_at,
                     td.tag_value AS value_double,
                     NULL::text AS value_string
-                FROM {self.tenant}.tag_data td
-                JOIN {self.tenant}.tag_names tn ON td.tag_name_id = tn.id
+                FROM tag_data td
+                JOIN tag_names tn ON td.tag_name_id = tn.id
                 WHERE tn.normalized_name = %(tag_name)s AND (td.tag_value_changed_at >= %(start_at)s OR %(start_at)s IS NULL) AND (td.tag_value_changed_at < %(end_at)s OR %(end_at)s IS NULL)
                 UNION ALL
                 SELECT
                     tds.tag_value_changed_at,
                     NULL::double precision AS value_double,
                     tds.tag_value AS value_string
-                FROM {self.tenant}.tag_data_str tds
-                JOIN {self.tenant}.tag_names tn ON tds.tag_name_id = tn.id
+                FROM tag_data_str tds
+                JOIN tag_names tn ON tds.tag_name_id = tn.id
                 WHERE tn.normalized_name = %(tag_name)s AND (tds.tag_value_changed_at >= %(start_at)s OR %(start_at)s IS NULL) AND (tds.tag_value_changed_at < %(end_at)s OR %(end_at)s IS NULL)
                 ORDER BY tag_value_changed_at ASC
                 LIMIT %(limit)s
@@ -140,42 +134,23 @@ class CVec:
                 ]
 
                 spans = []
-                # 3. Construct spans
                 for i, point in enumerate(all_points):
                     current_raw_start_at = point["time"]
                     current_value = point["value"]
+                    next_raw_event_at = all_points[i + 1]["time"] if i + 1 < len(all_points) else None
 
-                    span_actual_start = current_raw_start_at
-
-                    next_raw_event_at = None
-                    if i + 1 < len(all_points):
-                        next_raw_event_at = all_points[i + 1]["time"]
-
-                    if next_raw_event_at is not None:
-                        # If _end_at is specified, cap the span by it. Otherwise, span ends at next event.
-                        span_actual_end = (
-                            min(next_raw_event_at, _end_at)
-                            if _end_at is not None
-                            else next_raw_event_at
+                    spans.append(
+                        Span(
+                            id=None,
+                            tag_name=tag_name,
+                            value=current_value,
+                            start_at=current_raw_start_at, # TODO: lookup span override start_at
+                            end_at=next_raw_event_at, # TODO: lookup span override end_at
+                            raw_start_at=current_raw_start_at,
+                            raw_end_at=next_raw_event_at,
+                            metadata=None,
                         )
-                    else:
-                        # No next event, so span extends to _end_at (which can be None if query is unbounded)
-                        span_actual_end = _end_at
-
-                    # Add span if it has a positive duration or extends indefinitely (end_at is None)
-                    if span_actual_end is None or span_actual_start < span_actual_end:
-                        spans.append(
-                            Span(
-                                id=None,
-                                tag_name=tag_name,
-                                value=current_value,
-                                start_at=span_actual_start,
-                                end_at=span_actual_end,
-                                raw_start_at=current_raw_start_at,
-                                raw_end_at=next_raw_event_at,
-                                metadata=None,
-                            )
-                        )
+                    )
                 return spans
         finally:
             if conn:
