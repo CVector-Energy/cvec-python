@@ -90,14 +90,6 @@ class CVec:
         try:
             conn = self._get_db_connection()
             with conn.cursor() as cur:
-                # 1. Get tag_name_id
-                query_tag_id = f"SELECT id FROM {self.tenant}.tag_names WHERE normalized_name = %(tag_name)s"
-                cur.execute(query_tag_id, {"tag_name": tag_name})
-                tag_row = cur.fetchone()
-                if not tag_row:
-                    return []  # Tag not found
-                tag_name_id = tag_row["id"]
-
                 # Fetch limit + 1 points to correctly determine the end_at for the limit-th span.
                 # If limit is None or negative, sql_limit will be None (LIMIT NULL in PostgreSQL, meaning no limit).
                 sql_limit_value = None
@@ -107,8 +99,8 @@ class CVec:
                 # Parameters for the database query.
                 # Each part of the UNION ALL gets the same WHERE clause parameters.
                 # The final sql_limit_value is for the LIMIT clause.
-                union_db_query_params = {
-                    "tag_name_id": tag_name_id,
+                query_params = {
+                    "tag_name": tag_name,
                     "start_at": _start_at,
                     "end_at": _end_at,
                     "limit": sql_limit_value,
@@ -117,22 +109,24 @@ class CVec:
                 # Combined query for numeric and string data
                 combined_query = f"""
                 SELECT
-                    tag_value_changed_at,
-                    tag_value AS value_double,
+                    td.tag_value_changed_at,
+                    td.tag_value AS value_double,
                     NULL::text AS value_string
-                FROM tag_data
-                WHERE tag_name_id = %(tag_name_id)s AND (tag_value_changed_at >= %(start_at)s OR %(start_at)s IS NULL) AND (tag_value_changed_at < %(end_at)s OR %(end_at)s IS NULL)
+                FROM {self.tenant}.tag_data td
+                JOIN {self.tenant}.tag_names tn ON td.tag_name_id = tn.id
+                WHERE tn.normalized_name = %(tag_name)s AND (td.tag_value_changed_at >= %(start_at)s OR %(start_at)s IS NULL) AND (td.tag_value_changed_at < %(end_at)s OR %(end_at)s IS NULL)
                 UNION ALL
                 SELECT
-                    tag_value_changed_at,
+                    tds.tag_value_changed_at,
                     NULL::double precision AS value_double,
-                    tag_value AS value_string
-                FROM tag_data_str
-                WHERE tag_name_id = %(tag_name_id)s AND (tag_value_changed_at >= %(start_at)s OR %(start_at)s IS NULL) AND (tag_value_changed_at < %(end_at)s OR %(end_at)s IS NULL)
+                    tds.tag_value AS value_string
+                FROM {self.tenant}.tag_data_str tds
+                JOIN {self.tenant}.tag_names tn ON tds.tag_name_id = tn.id
+                WHERE tn.normalized_name = %(tag_name)s AND (tds.tag_value_changed_at >= %(start_at)s OR %(start_at)s IS NULL) AND (tds.tag_value_changed_at < %(end_at)s OR %(end_at)s IS NULL)
                 ORDER BY tag_value_changed_at ASC
                 LIMIT %(limit)s
                 """
-                cur.execute(combined_query, union_db_query_params)
+                cur.execute(combined_query, query_params)
                 all_points = [
                     {
                         "time": row["tag_value_changed_at"],
