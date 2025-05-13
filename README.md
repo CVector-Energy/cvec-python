@@ -6,7 +6,7 @@ This SDK integrates directly with CVector's database. Each tenant has a schema a
 
 ## tag_data
 
-The tag_data table is a Timescale hypertable. Boolean tags are represented within this table using value 0 and 1.
+The tag_data table is a Timescale hypertable. Boolean tags are represented within this table using value 0 and 1. The table uses a "report by exception" approach; a row is inserted only when the value of a metric changes.
 
 ```sql
 CREATE TABLE tag_data (
@@ -25,7 +25,7 @@ SELECT create_hypertable(
 
 ## tag_data_str
 
-The tag_data_str table is a Timescale hypertable.
+The tag_data_str table is a Timescale hypertable, similar to tag_data for string-valued tags.
 
 ```sql
 CREATE TABLE tag_data_str (
