@@ -109,7 +109,13 @@ class CVec:
                 # Parameters for each part of the UNION ALL query.
                 # The tuple (tag_name_id, _start_at, _start_at, _end_at, _end_at)
                 # is repeated for the numeric and string parts of the query.
-                union_db_query_params = (tag_name_id, _start_at, _start_at, _end_at, _end_at) * 2
+                union_db_query_params = (
+                    tag_name_id,
+                    _start_at,
+                    _start_at,
+                    _end_at,
+                    _end_at,
+                ) * 2
 
                 # Combined query for numeric and string data
                 combined_query = f"""
@@ -124,16 +130,22 @@ class CVec:
                 """
                 cur.execute(combined_query, union_db_query_params)
                 for row in cur.fetchall():
-                    value = row["tag_value"]  # This is TEXT due to CAST or original type
-                    if row["value_type"] == 'numeric':
-                        if value is not None:  # Avoid float(None) which raises TypeError
+                    value = row[
+                        "tag_value"
+                    ]  # This is TEXT due to CAST or original type
+                    if row["value_type"] == "numeric":
+                        if (
+                            value is not None
+                        ):  # Avoid float(None) which raises TypeError
                             try:
                                 value = float(value)
                             except ValueError:
                                 # This might occur if CAST to TEXT results in a string not convertible to float,
                                 # though float() handles 'Infinity', '-Infinity', 'NaN' from strings.
                                 # Log a warning and keep the value as a string in such edge cases.
-                                print(f"Warning: Could not convert supposed numeric value '{value}' to float.")
+                                print(
+                                    f"Warning: Could not convert supposed numeric value '{value}' to float."
+                                )
                     # If value_type is 'string', value is already a string (or None if DB NULL).
                     # If value was NULL in the database, it remains Python None for both types.
                     all_points.append(
