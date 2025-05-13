@@ -163,7 +163,7 @@ class CVec:
                     current_raw_start_at = point["time"]
                     current_value = point["value"]
 
-                    span_actual_start = current_raw_start_at # Query now ensures current_raw_start_at >= _start_at
+                    span_actual_start = current_raw_start_at  # Query now ensures current_raw_start_at >= _start_at
 
                     next_raw_event_at = None
                     if i + 1 < len(all_points):
