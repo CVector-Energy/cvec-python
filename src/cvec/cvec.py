@@ -119,35 +119,30 @@ class CVec:
 
                 # Combined query for numeric and string data
                 combined_query = f"""
-                SELECT tag_value_changed_at, CAST(tag_value AS TEXT) AS tag_value, 'numeric' AS value_type
+                SELECT
+                    tag_value_changed_at,
+                    tag_value AS value_double,
+                    NULL::text AS value_string
                 FROM {self.tenant}.tag_data
                 WHERE tag_name_id = %s AND (tag_value_changed_at >= %s OR %s IS NULL) AND (tag_value_changed_at < %s OR %s IS NULL)
                 UNION ALL
-                SELECT tag_value_changed_at, tag_value, 'string' AS value_type
+                SELECT
+                    tag_value_changed_at,
+                    NULL::double precision AS value_double,
+                    tag_value AS value_string
                 FROM {self.tenant}.tag_data_str
                 WHERE tag_name_id = %s AND (tag_value_changed_at >= %s OR %s IS NULL) AND (tag_value_changed_at < %s OR %s IS NULL)
                 ORDER BY tag_value_changed_at ASC
                 """
                 cur.execute(combined_query, union_db_query_params)
                 for row in cur.fetchall():
-                    value = row[
-                        "tag_value"
-                    ]  # This is TEXT due to CAST or original type
-                    if row["value_type"] == "numeric":
-                        if (
-                            value is not None
-                        ):  # Avoid float(None) which raises TypeError
-                            try:
-                                value = float(value)
-                            except ValueError:
-                                # This might occur if CAST to TEXT results in a string not convertible to float,
-                                # though float() handles 'Infinity', '-Infinity', 'NaN' from strings.
-                                # Log a warning and keep the value as a string in such edge cases.
-                                print(
-                                    f"Warning: Could not convert supposed numeric value '{value}' to float."
-                                )
-                    # If value_type is 'string', value is already a string (or None if DB NULL).
-                    # If value was NULL in the database, it remains Python None for both types.
+                    value = None
+                    if row["value_double"] is not None:
+                        value = row["value_double"]  # psycopg2 converts to float
+                    elif row["value_string"] is not None:
+                        value = row["value_string"] # psycopg2 converts to string
+                    # If both are None (e.g. original DB value was NULL), value remains None.
+
                     all_points.append(
                         {
                             "time": row["tag_value_changed_at"],
