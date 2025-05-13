@@ -153,14 +153,13 @@ class CVec:
                 LIMIT %s
                 """
                 cur.execute(combined_query, union_db_query_params)
-                for row in cur.fetchall():
-                    value = row["value_double"] if row["value_double"] is not None else row["value_string"]
-                    all_points.append(
-                        {
-                            "time": row["tag_value_changed_at"],
-                            "value": value,
-                        }
-                    )
+                all_points = [
+                    {
+                        "time": row["tag_value_changed_at"],
+                        "value": row["value_double"] if row["value_double"] is not None else row["value_string"],
+                    }
+                    for row in cur.fetchall()
+                ]
 
                 if not all_points:
                     return []
