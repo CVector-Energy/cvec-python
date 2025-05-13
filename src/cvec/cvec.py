@@ -140,7 +140,7 @@ class CVec:
                     if row["value_double"] is not None:
                         value = row["value_double"]  # psycopg2 converts to float
                     elif row["value_string"] is not None:
-                        value = row["value_string"] # psycopg2 converts to string
+                        value = row["value_string"]  # psycopg2 converts to string
                     # If both are None (e.g. original DB value was NULL), value remains None.
 
                     all_points.append(
