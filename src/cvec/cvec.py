@@ -66,15 +66,12 @@ class CVec:
         Each span represents a period where the tag's value is constant.
         - `value`: The tag's value during the span.
         - `tag_name`: The name of the tag.
-        - `start_at`: The timestamp of the value change that initiated this span's value.
+        - `raw_start_at`: The timestamp of the value change that initiated this span's value.
           This will be >= `_start_at` if `_start_at` was specified.
-        - `raw_start_at`: Same as `start_at`.
-        - `end_at`: The timestamp of the next value change for this tag, or the
-          query's `_end_at` parameter, whichever is earlier. If the query's `_end_at`
-          is `None` and there is no subsequent value change, this field will be `None`,
-          indicating the span continues indefinitely.
         - `raw_end_at`: The timestamp of the next value change for this tag found by
           the query. `None` if no subsequent change is found within the query window.
+          If the query's `_end_at` is `None` and there is no subsequent value change,
+          this field will be `None`, indicating the span continues indefinitely.
         - `id`: Currently `None`.
         - `metadata`: Currently `None`.
 
@@ -137,12 +134,6 @@ class CVec:
                         id=None,
                         tag_name=tag_name,
                         value=point["value"],
-                        start_at=point["time"],  # TODO: lookup span override start_at
-                        end_at=(
-                            all_points[i + 1]["time"]
-                            if i + 1 < len(all_points)
-                            else None
-                        ),  # TODO: lookup span override end_at
                         raw_start_at=point["time"],
                         raw_end_at=(
                             all_points[i + 1]["time"]

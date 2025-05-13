@@ -80,10 +80,8 @@ If `start_at` is `None` (e.g., not provided as an argument and no class default 
 Each `Span` object in the returned list represents a period where the tag's value is constant and has the following attributes:
 - `value`: The tag's value during the span.
 - `tag_name`: The name of the tag.
-- `start_at`: The timestamp of the value change that initiated this span's value. This will be greater than or equal to the query's `start_at` if one was specified.
-- `raw_start_at`: Same as `start_at`.
-- `end_at`: The timestamp of the next value change for this tag, or the query's `end_at` parameter, whichever is earlier. If the query's `end_at` is not specified (i.e., `None`) and there is no subsequent value change found by the query, this field will be `None`, indicating the span continues indefinitely.
-- `raw_end_at`: The timestamp of the next value change for this tag found by the query. This will be `None` if no subsequent change is found within the query window (e.g., before the query's `end_at` or indefinitely if `end_at` is `None`).
+- `raw_start_at`: The timestamp of the value change that initiated this span's value. This will be greater than or equal to the query's `start_at` if one was specified.
+- `raw_end_at`: The timestamp of the next value change for this tag found by the query. This will be `None` if no subsequent change is found within the query window (e.g., before the query's `end_at` or indefinitely if `end_at` is `None`). If the query's `end_at` is not specified (i.e., `None`) and there is no subsequent value change found by the query, this field will be `None`, indicating the span continues indefinitely.
 - `id`: Currently `None`. In a future version of the SDK, this will be the span's unique identifier.
 - `metadata`: Currently `None`. In a future version, this can be used to store annotations or other metadata related to the span.
 
