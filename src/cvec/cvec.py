@@ -154,22 +154,13 @@ class CVec:
                 """
                 cur.execute(combined_query, union_db_query_params)
                 for row in cur.fetchall():
-                    value = None
-                    if row["value_double"] is not None:
-                        value = row["value_double"]  # psycopg2 converts to float
-                    elif row["value_string"] is not None:
-                        value = row["value_string"]  # psycopg2 converts to string
-                    # If both are None (e.g. original DB value was NULL), value remains None.
-
+                    value = row["value_double"] if row["value_double"] is not None else row["value_string"]
                     all_points.append(
                         {
                             "time": row["tag_value_changed_at"],
                             "value": value,
                         }
                     )
-
-                # Sort all collected points by time
-                all_points.sort(key=lambda p: p["time"])
 
                 if not all_points:
                     return []
