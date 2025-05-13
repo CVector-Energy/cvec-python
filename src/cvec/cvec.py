@@ -92,9 +92,9 @@ class CVec:
                     "tag_name": tag_name,
                     "start_at": _start_at,
                     "end_at": _end_at,
-                    # Fetch up to 'limit' points. If limit is None or negative,
-                    # sql_limit will be None (LIMIT NULL in PostgreSQL, meaning no limit).
-                    "limit": limit if limit is not None and limit >= 0 else None,
+                    # Fetch up to 'limit' points. If limit is None, then the `LIMIT NULL` clause
+                    # has no effect (in PostgreSQL).
+                    "limit": limit,
                 }
 
                 combined_query = f"""
@@ -118,34 +118,14 @@ class CVec:
                 """
                 cur.execute(combined_query, query_params)
                 db_rows = cur.fetchall()
-
                 spans = []
-                num_points_fetched = len(db_rows)
 
-                # Determine how many spans to create based on user's limit and fetched points
-                # If limit (from get_spans arg) is None, create spans for all fetched points.
-                # Otherwise, create at most 'limit' spans.
-                count_spans_to_create = num_points_fetched
-                if limit is not None and limit >= 0:
-                    count_spans_to_create = min(limit, num_points_fetched)
-
-                for i in range(count_spans_to_create):
-                    current_row = db_rows[i]
-                    raw_start_at = current_row["tag_value_changed_at"]
-                    value = (
-                        current_row["value_double"]
-                        if current_row["value_double"] is not None
-                        else current_row["value_string"]
-                    )
-
-                    if i == 0:
-                        # This is the newest point fetched. Its span ends at _end_at (if specified)
-                        # or continues indefinitely if _end_at is None.
-                        raw_end_at = _end_at
-                    else:
-                        # Span ends when the chronologically next point (which is previous in DESC list) started.
-                        raw_end_at = db_rows[i - 1]["tag_value_changed_at"]
-
+                # None indicates that the end time is not known; the span extends beyond
+                # the query period.
+                raw_end_at = None
+                for row in db_rows:
+                    raw_start_at = row["tag_value_changed_at"]
+                    value = row["value_double"] if row["value_double"] is not None else row["value_string"]
                     spans.append(
                         Span(
                             id=None,
@@ -156,6 +136,8 @@ class CVec:
                             metadata=None,
                         )
                     )
+                    raw_end_at = raw_start_at
+
                 return spans
         finally:
             if conn:
