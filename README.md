@@ -74,15 +74,19 @@ Setup the SDK with the given host and API Key. The host and API key are loaded f
 
 ## `get_spans(tag_name, ?start_at, ?end_at, ?limit)`
 
-Return time spans for a tag, where each span's value is initiated by a value change occurring *within* the specified [`start_at`, `end_at`) interval.
+Return time spans for a tag. Spans are generated from value changes that occur after `start_at` (if specified) and before `end_at` (if specified).
+If `start_at` is `None` (e.g., not provided as an argument and no class default `default_start_at` is set), the query for value changes is unbounded at the start. Similarly, if `end_at` is `None`, the query is unbounded at the end.
 
-This function identifies all `tag_value_changed_at` timestamps for the given `tag_name` that are greater than or equal to `start_at` and less than `end_at`. For each such timestamp (`event_time`):
-- The span's `value` is the value set at `event_time`.
-- The span's `start_at` (and `raw_start_at`) is `event_time`.
-- The span's `end_at` is the earlier of the next `tag_value_changed_at` timestamp for this tag, or the query's `end_at`.
-- The span's `raw_end_at` is the timestamp of the next `tag_value_changed_at` (if one occurs before the query's `end_at`), or `None`.
+Each span in the returned list represents a period where the tag's value is constant:
+- `value`: The tag's value during the span.
+- `tag_name`: The name of the tag.
+- `start_at`: The timestamp of the value change that initiated this span's value. This will be greater than or equal to the query's `start_at` if one was specified.
+- `raw_start_at`: Same as `start_at`.
+- `end_at`: The timestamp of the next value change for this tag, or the query's `end_at` parameter, whichever is earlier. If the query's `end_at` is not specified (i.e., `None`) and there is no subsequent value change found by the query, this field will be `None`, indicating the span continues indefinitely.
+- `raw_end_at`: The timestamp of the next value change for this tag found by the query. This will be `None` if no subsequent change is found within the query window (e.g., before the query's `end_at` or indefinitely if `end_at` is `None`).
 
 Returns a list of spans. Each span has the following fields: {id, tag_name, value, start_at, end_at, raw_start_at, raw_end_at, metadata}. In a future version of the SDK, spans can be annotated, edited, and deleted.
+If no relevant value changes are found, an empty list is returned.
 
 ## `get_metric_data(?tag_names, ?start_at, ?end_at)`
 

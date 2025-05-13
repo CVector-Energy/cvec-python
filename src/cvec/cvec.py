@@ -62,37 +62,32 @@ class CVec:
 
     def get_spans(self, tag_name, start_at=None, end_at=None, limit=None):
         """
-        Return time spans for a tag, where each span's value is initiated by a
-        value change occurring within the specified [start_at, end_at) interval.
+        Return time spans for a tag. Spans are generated from value changes
+        that occur after `start_at` (if specified) and before `end_at` (if specified).
+        If `start_at` is `None` (e.g., not provided via argument or class default),
+        the query is unbounded at the start. If `end_at` is `None`, it's unbounded at the end.
 
-        This function finds all spans where the metric value is constant that begin within the
-        specified interval:
-        - `value`: The tag's value during the span time period.
+        Each span represents a period where the tag's value is constant.
+        - `value`: The tag's value during the span.
         - `tag_name`: The name of the tag.
-        - `start_at`: Equal to `event_time`.
-        - `raw_start_at`: Equal to `event_time`.
+        - `start_at`: The timestamp of the value change that initiated this span's value.
+          This will be >= `_start_at` if `_start_at` was specified.
+        - `raw_start_at`: Same as `start_at`.
         - `end_at`: The timestamp of the next value change for this tag, or the
-          query's `end_at` parameter, whichever is earlier. If there is no
-          subsequent value change up to the query's `end_at`, this will be the
-          query's `end_at`.
-        - `raw_end_at`: The timestamp of the next value change for this tag, if
-          another change is found by the query (i.e., before `end_at`).
-          Otherwise, `None`.
+          query's `_end_at` parameter, whichever is earlier. If the query's `_end_at`
+          is `None` and there is no subsequent value change, this field will be `None`,
+          indicating the span continues indefinitely.
+        - `raw_end_at`: The timestamp of the next value change for this tag found by
+          the query. `None` if no subsequent change is found within the query window.
         - `id`: Currently `None`.
         - `metadata`: Currently `None`.
 
         Returns a list of dictionaries, where each dictionary represents a span.
-        If no value changes occur for the tag within the specified interval, an
-        empty list is returned.
+        If no relevant value changes are found, an empty list is returned.
         The `limit` parameter restricts the number of spans returned.
         """
         _start_at = start_at or self.default_start_at
         _end_at = end_at or self.default_end_at
-
-        if not _start_at or not _end_at:
-            raise ValueError(
-                "Effective start_at and end_at must be provided either as arguments or class defaults."
-            )
 
         conn = None
         try:
@@ -111,17 +106,28 @@ class CVec:
                 # 2. Fetch data points from tag_data (numeric) and tag_data_str (text)
                 all_points = []
 
+                # Build WHERE clause and params for queries
+                where_conditions = ["tag_name_id = %s"]
+                query_params = [tag_name_id]
+
+                if _start_at is not None:
+                    where_conditions.append("tag_value_changed_at >= %s")
+                    query_params.append(_start_at)
+                
+                if _end_at is not None:
+                    where_conditions.append("tag_value_changed_at < %s")
+                    query_params.append(_end_at)
+                
+                where_sql = " AND ".join(where_conditions)
+
                 # Query for numeric data
                 query_numeric = f"""
                 SELECT tag_value_changed_at, tag_value
                  FROM {self.tenant}.tag_data
-                 WHERE tag_name_id = %s AND tag_value_changed_at >= %s AND tag_value_changed_at < %s
+                 WHERE {where_sql}
                  ORDER BY tag_value_changed_at ASC
                 """
-                cur.execute(
-                    query_numeric,
-                    (tag_name_id, _start_at, _end_at),
-                )
+                cur.execute(query_numeric, tuple(query_params))
                 for row in cur.fetchall():
                     all_points.append(
                         {
@@ -134,13 +140,10 @@ class CVec:
                 query_string = f"""
                 SELECT tag_value_changed_at, tag_value
                  FROM {self.tenant}.tag_data_str
-                 WHERE tag_name_id = %s AND tag_value_changed_at >= %s AND tag_value_changed_at < %s
+                 WHERE {where_sql}
                  ORDER BY tag_value_changed_at ASC
                 """
-                cur.execute(
-                    query_string,
-                    (tag_name_id, _start_at, _end_at),
-                )
+                cur.execute(query_string, tuple(query_params))
                 for row in cur.fetchall():
                     all_points.append(
                         {
@@ -161,18 +164,21 @@ class CVec:
                     current_raw_start_at = point["time"]
                     current_value = point["value"]
 
-                    span_actual_start = current_raw_start_at  # Query now ensures current_raw_start_at >= _start_at
+                    span_actual_start = current_raw_start_at
 
                     next_raw_event_at = None
                     if i + 1 < len(all_points):
                         next_raw_event_at = all_points[i + 1]["time"]
-                        span_actual_end = min(next_raw_event_at, _end_at)
-                    else:
-                        span_actual_end = _end_at
 
-                    if (
-                        span_actual_start < span_actual_end
-                    ):  # Ensure span has positive duration
+                    if next_raw_event_at is not None:
+                        # If _end_at is specified, cap the span by it. Otherwise, span ends at next event.
+                        span_actual_end = min(next_raw_event_at, _end_at) if _end_at is not None else next_raw_event_at
+                    else:
+                        # No next event, so span extends to _end_at (which can be None if query is unbounded)
+                        span_actual_end = _end_at
+                    
+                    # Add span if it has a positive duration or extends indefinitely (end_at is None)
+                    if span_actual_end is None or span_actual_start < span_actual_end:
                         spans.append(
                             {
                                 "id": None,
