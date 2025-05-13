@@ -113,11 +113,11 @@ class CVec:
                 if _start_at is not None:
                     where_conditions.append("tag_value_changed_at >= %s")
                     query_params.append(_start_at)
-                
+
                 if _end_at is not None:
                     where_conditions.append("tag_value_changed_at < %s")
                     query_params.append(_end_at)
-                
+
                 where_sql = " AND ".join(where_conditions)
 
                 # Query for numeric data
@@ -172,11 +172,15 @@ class CVec:
 
                     if next_raw_event_at is not None:
                         # If _end_at is specified, cap the span by it. Otherwise, span ends at next event.
-                        span_actual_end = min(next_raw_event_at, _end_at) if _end_at is not None else next_raw_event_at
+                        span_actual_end = (
+                            min(next_raw_event_at, _end_at)
+                            if _end_at is not None
+                            else next_raw_event_at
+                        )
                     else:
                         # No next event, so span extends to _end_at (which can be None if query is unbounded)
                         span_actual_end = _end_at
-                    
+
                     # Add span if it has a positive duration or extends indefinitely (end_at is None)
                     if span_actual_end is None or span_actual_start < span_actual_end:
                         spans.append(
