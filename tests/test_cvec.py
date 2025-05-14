@@ -1,6 +1,7 @@
 import pytest
 import os
 from unittest.mock import patch
+from datetime import datetime
 from cvec import CVec
 
 
@@ -11,14 +12,14 @@ class TestCVecConstructor:
             host="test_host",
             tenant="test_tenant",
             api_key="test_api_key",
-            default_start_at="test_start",
-            default_end_at="test_end",
+            default_start_at=datetime(2023, 1, 1, 0, 0, 0),
+            default_end_at=datetime(2023, 1, 2, 0, 0, 0),
         )
         assert client.host == "test_host"
         assert client.tenant == "test_tenant"
         assert client.api_key == "test_api_key"
-        assert client.default_start_at == "test_start"
-        assert client.default_end_at == "test_end"
+        assert client.default_start_at == datetime(2023, 1, 1, 0, 0, 0)
+        assert client.default_end_at == datetime(2023, 1, 2, 0, 0, 0)
 
     @patch.dict(
         os.environ,
@@ -31,12 +32,12 @@ class TestCVecConstructor:
     )
     def test_constructor_with_env_vars(self) -> None:
         """Test CVec constructor with environment variables."""
-        client = CVec(default_start_at="env_start", default_end_at="env_end")
+        client = CVec(default_start_at=datetime(2023, 2, 1, 0, 0, 0), default_end_at=datetime(2023, 2, 2, 0, 0, 0))
         assert client.host == "env_host"
         assert client.tenant == "env_tenant"
         assert client.api_key == "env_api_key"
-        assert client.default_start_at == "env_start"
-        assert client.default_end_at == "env_end"
+        assert client.default_start_at == datetime(2023, 2, 1, 0, 0, 0)
+        assert client.default_end_at == datetime(2023, 2, 2, 0, 0, 0)
 
     @patch.dict(os.environ, {}, clear=True)
     def test_constructor_missing_host_raises_value_error(self) -> None:
@@ -97,11 +98,11 @@ class TestCVecConstructor:
                 host="arg_host",
                 tenant="arg_tenant",
                 api_key="arg_api_key",
-                default_start_at="arg_start",
-                default_end_at="arg_end",
+                default_start_at=datetime(2023, 3, 1, 0, 0, 0),
+                default_end_at=datetime(2023, 3, 2, 0, 0, 0),
             )
             assert client.host == "arg_host"
             assert client.tenant == "arg_tenant"
             assert client.api_key == "arg_api_key"
-            assert client.default_start_at == "arg_start"
-            assert client.default_end_at == "arg_end"
+            assert client.default_start_at == datetime(2023, 3, 1, 0, 0, 0)
+            assert client.default_end_at == datetime(2023, 3, 2, 0, 0, 0)
