@@ -98,9 +98,7 @@ class CVec:
         _start_at = start_at or self.default_start_at
         _end_at = end_at or self.default_end_at
 
-        conn = None
-        try:
-            conn = self._get_db_connection()
+        with self._get_db_connection() as conn:
             with conn.cursor() as cur:
                 query_params = {
                     "tag_name": tag_name,
@@ -157,9 +155,6 @@ class CVec:
                     raw_end_at = raw_start_at
 
                 return spans
-        finally:
-            if conn:
-                conn.close()
 
     def get_metric_data(
         self,
