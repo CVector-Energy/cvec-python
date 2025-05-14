@@ -199,7 +199,9 @@ class CVec:
             return pd.DataFrame(columns=["tag_name", "time", "value"])
 
         # Create DataFrame from fetched rows
-        df = pd.DataFrame(rows, columns=["tag_name", "time", "value_double", "value_string"])
+        df = pd.DataFrame(
+            rows, columns=["tag_name", "time", "value_double", "value_string"]
+        )
 
         # Combine value_double and value_string into a single 'value' column
         # NaNs in value_double (where it was NULL in DB) will be filled by values from value_string
