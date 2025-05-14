@@ -32,7 +32,10 @@ class TestCVecConstructor:
     )
     def test_constructor_with_env_vars(self) -> None:
         """Test CVec constructor with environment variables."""
-        client = CVec(default_start_at=datetime(2023, 2, 1, 0, 0, 0), default_end_at=datetime(2023, 2, 2, 0, 0, 0))
+        client = CVec(
+            default_start_at=datetime(2023, 2, 1, 0, 0, 0),
+            default_end_at=datetime(2023, 2, 2, 0, 0, 0),
+        )
         assert client.host == "env_host"
         assert client.tenant == "env_tenant"
         assert client.api_key == "env_api_key"
