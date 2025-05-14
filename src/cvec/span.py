@@ -6,6 +6,7 @@ class Span:
     """
     Represents a time span where a tag has a constant value.
     """
+
     id: Optional[Any]
     tag_name: str
     value: Optional[Union[float, str]]
