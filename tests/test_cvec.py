@@ -1,8 +1,8 @@
 import pytest
 import os
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from datetime import datetime
-from cvec import CVec
+from cvec import CVec, Span
 
 
 class TestCVecConstructor:
@@ -109,3 +109,64 @@ class TestCVecConstructor:
             assert client.api_key == "arg_api_key"
             assert client.default_start_at == datetime(2023, 3, 1, 0, 0, 0)
             assert client.default_end_at == datetime(2023, 3, 2, 0, 0, 0)
+
+
+class TestCVecGetSpans:
+    @patch("cvec.cvec.psycopg.connect")
+    def test_get_spans_basic_case(self, mock_connect: MagicMock) -> None:
+        """Test get_spans with a few data points."""
+        # Setup mock connection and cursor
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_connect.return_value.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
+
+        # Sample data (time, value_double, value_string) - newest first
+        time1 = datetime(2023, 1, 1, 10, 0, 0)
+        time2 = datetime(2023, 1, 1, 11, 0, 0)
+        time3 = datetime(2023, 1, 1, 12, 0, 0)
+        mock_db_rows = [
+            (time3, 30.0, None),  # Newest
+            (time2, None, "val2"),
+            (time1, 10.0, None),  # Oldest
+        ]
+        mock_cur.fetchall.return_value = mock_db_rows
+
+        client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
+        tag_name = "test_tag"
+        spans = client.get_spans(tag_name=tag_name)
+
+        assert len(spans) == 3
+        mock_cur.execute.assert_called_once()
+        
+        # Verify query parameters (optional, but good for sanity check)
+        # args, kwargs = mock_cur.execute.call_args
+        # assert kwargs['params']['metric'] == tag_name
+        # assert kwargs['params']['limit'] is None # Default limit
+
+        # Span 1 (from newest data point: time3)
+        # Based on current implementation, raw_end_at for the first span is None
+        assert spans[0].tag_name == tag_name
+        assert spans[0].value == 30.0
+        assert spans[0].raw_start_at == time3
+        assert spans[0].raw_end_at is None 
+
+        # Span 2 (from data point: time2)
+        assert spans[1].tag_name == tag_name
+        assert spans[1].value == "val2"
+        assert spans[1].raw_start_at == time2
+        assert spans[1].raw_end_at == time3
+
+        # Span 3 (from oldest data point: time1)
+        assert spans[2].tag_name == tag_name
+        assert spans[2].value == 10.0
+        assert spans[2].raw_start_at == time1
+        assert spans[2].raw_end_at == time2
+
+    # TODO: Add more tests for get_spans:
+    # - No data points
+    # - One data point
+    # - With limit parameter
+    # - With start_at/end_at parameters affecting results
+    # - When _end_at is provided to get_spans (to see its effect on the first span's raw_end_at,
+    #   once the suspected bug is addressed or confirmed as intended behavior)
