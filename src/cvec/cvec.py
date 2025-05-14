@@ -135,11 +135,7 @@ class CVec:
                 raw_end_at = None
                 for tag_value_changed_at, value_double, value_string in db_rows:
                     raw_start_at = tag_value_changed_at
-                    value = (
-                        value_double
-                        if value_double is not None
-                        else value_string
-                    )
+                    value = value_double if value_double is not None else value_string
                     spans.append(
                         Span(
                             id=None,
