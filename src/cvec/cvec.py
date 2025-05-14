@@ -155,8 +155,58 @@ class CVec:
         The return value is a Pandas DataFrame with three columns: tag_name, time, value.
         One row is returned for each tag value transition.
         """
-        # Implementation to be added
-        return pd.DataFrame(columns=["tag_name", "time", "value"])
+        _start_at = start_at or self.default_start_at
+        _end_at = end_at or self.default_end_at
+
+        # Base query selecting from the metric_data view
+        # The view provides: time, value_double, value_string, metric (as tag name)
+        sql_query_base = """
+            SELECT metric AS tag_name, time, value_double, value_string
+            FROM metric_data
+        """
+
+        conditions = []
+        params = {}
+
+        # Add time-based conditions
+        # The (condition OR param IS NULL) pattern handles cases where _start_at or _end_at might be None
+        conditions.append("(time >= %(start_at)s OR %(start_at)s IS NULL)")
+        params["start_at"] = _start_at
+
+        conditions.append("(time < %(end_at)s OR %(end_at)s IS NULL)")
+        params["end_at"] = _end_at
+
+        # Add tag_names filter if tag_names is provided (not None)
+        # If tag_names is an empty list, metric = ANY('{}') will correctly yield no results for this part.
+        if tag_names is not None:
+            conditions.append("metric = ANY(%(tag_names)s)")
+            params["tag_names"] = tuple(tag_names)
+
+        # Construct the full query
+        if conditions:
+            sql_query_full = sql_query_base + " WHERE " + " AND ".join(conditions)
+        else:
+            sql_query_full = sql_query_base
+
+        sql_query_full += " ORDER BY tag_name, time ASC"
+
+        with self._get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql_query_full, params)
+                rows = cur.fetchall()
+
+        if not rows:
+            return pd.DataFrame(columns=["tag_name", "time", "value"])
+
+        # Create DataFrame from fetched rows
+        df = pd.DataFrame(rows, columns=["tag_name", "time", "value_double", "value_string"])
+
+        # Combine value_double and value_string into a single 'value' column
+        # NaNs in value_double (where it was NULL in DB) will be filled by values from value_string
+        df["value"] = df["value_double"].combine_first(df["value_string"])
+
+        # Return the DataFrame with the required columns
+        return df[["tag_name", "time", "value"]]
 
     def get_tags(
         self, start_at: Optional[datetime] = None, end_at: Optional[datetime] = None
