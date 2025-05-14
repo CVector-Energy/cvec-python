@@ -138,7 +138,7 @@ class TestCVecGetSpans:
 
         assert len(spans) == 3
         mock_cur.execute.assert_called_once()
-        
+
         # Verify query parameters (optional, but good for sanity check)
         # args, kwargs = mock_cur.execute.call_args
         # assert kwargs['params']['metric'] == tag_name
@@ -149,7 +149,7 @@ class TestCVecGetSpans:
         assert spans[0].tag_name == tag_name
         assert spans[0].value == 30.0
         assert spans[0].raw_start_at == time3
-        assert spans[0].raw_end_at is None 
+        assert spans[0].raw_end_at is None
 
         # Span 2 (from data point: time2)
         assert spans[1].tag_name == tag_name
