@@ -107,28 +107,28 @@ class CVec:
                     "limit": limit,
                 }
 
-                combined_query = f"""
+                combined_query = """
                 WITH combined_tag_data AS (
                     SELECT
                         tag_name_id,
                         tag_value_changed_at,
                         tag_value AS value_double,
                         NULL::text AS value_string
-                    FROM {self.tenant}.tag_data
+                    FROM tag_data
                     UNION ALL
                     SELECT
                         tag_name_id,
                         tag_value_changed_at,
                         NULL::double precision AS value_double,
                         tag_value AS value_string
-                    FROM {self.tenant}.tag_data_str
+                    FROM tag_data_str
                 )
                 SELECT
                     ctd.tag_value_changed_at,
                     ctd.value_double,
                     ctd.value_string
                 FROM combined_tag_data ctd
-                JOIN {self.tenant}.tag_names tn ON ctd.tag_name_id = tn.id
+                JOIN tag_names tn ON ctd.tag_name_id = tn.id
                 WHERE tn.normalized_name = %(tag_name)s
                   AND (ctd.tag_value_changed_at >= %(start_at)s OR %(start_at)s IS NULL)
                   AND (ctd.tag_value_changed_at < %(end_at)s OR %(end_at)s IS NULL)
