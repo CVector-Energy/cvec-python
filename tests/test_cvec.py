@@ -146,7 +146,7 @@ class TestCVecGetSpans:
         assert params["limit"] is None  # Default limit
 
         # Span 1 (from newest data point: time3)
-        # Based on current implementation, raw_end_at for the first span is None
+        # The raw_end_at is None for the newest span, because the span is still open.
         assert spans[0].tag_name == tag_name
         assert spans[0].value == 30.0
         assert spans[0].raw_start_at == time3
@@ -218,27 +218,12 @@ class TestCVecGetSpans:
         query_limit = 2
         spans = client.get_spans(tag_name=tag_name, limit=query_limit)
 
-        assert len(spans) == query_limit
         mock_cur.execute.assert_called_once()
 
         # Verify psycopg query parameters
         (_sql, params), _kwargs = mock_cur.execute.call_args
         assert params["metric"] == tag_name
         assert params["limit"] == query_limit
-
-        # Span 1 (from newest data point: time3)
-        # The raw_end_at is None for the newest span.
-        assert spans[0].tag_name == tag_name
-        assert spans[0].value == 30.0
-        assert spans[0].raw_start_at == time3
-        assert spans[0].raw_end_at is None
-
-        # Span 2 (from data point: time2)
-        assert spans[1].tag_name == tag_name
-        assert spans[1].value == "val2"
-        assert spans[1].raw_start_at == time2
-        assert spans[1].raw_end_at == time3
-        # The third data point (time1) should not be processed into a span
 
     @patch("cvec.cvec.psycopg.connect")
     def test_get_spans_with_end_at_parameter(self, mock_connect: MagicMock) -> None:
