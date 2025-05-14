@@ -1,4 +1,6 @@
 import os
+from datetime import datetime
+from typing import Any, List, Optional
 
 import pandas as pd
 import psycopg
@@ -11,15 +13,20 @@ class CVec:
     """
     CVec API Client
     """
+    host: Optional[str]
+    tenant: Optional[str]
+    api_key: Optional[str]
+    default_start_at: Optional[datetime]
+    default_end_at: Optional[datetime]
 
     def __init__(
         self,
-        host=None,
-        tenant=None,
-        api_key=None,
-        default_start_at=None,
-        default_end_at=None,
-    ):
+        host: Optional[str] = None,
+        tenant: Optional[str] = None,
+        api_key: Optional[str] = None,
+        default_start_at: Optional[datetime] = None,
+        default_end_at: Optional[datetime] = None,
+    ) -> None:
         """
         Setup the SDK with the given host and API Key.
         The host and API key are loaded from environment variables CVEC_HOST,
@@ -46,7 +53,7 @@ class CVec:
                 "CVEC_API_KEY must be set either as an argument or environment variable"
             )
 
-    def _get_db_connection(self):
+    def _get_db_connection(self) -> psycopg.Connection:
         """Helper method to establish a database connection."""
         return psycopg.connect(
             user=self.tenant,
@@ -56,7 +63,13 @@ class CVec:
             row_factory=dict_row,
         )
 
-    def get_spans(self, tag_name, start_at=None, end_at=None, limit=None):
+    def get_spans(
+        self,
+        tag_name: str,
+        start_at: Optional[datetime] = None,
+        end_at: Optional[datetime] = None,
+        limit: Optional[int] = None,
+    ) -> List[Span]:
         """
         Return time spans for a tag. Spans are generated from value changes
         that occur after `start_at` (if specified) and before `end_at` (if specified).
@@ -143,7 +156,12 @@ class CVec:
             if conn:
                 conn.close()
 
-    def get_metric_data(self, tag_names=None, start_at=None, end_at=None):
+    def get_metric_data(
+        self,
+        tag_names: Optional[List[str]] = None,
+        start_at: Optional[datetime] = None,
+        end_at: Optional[datetime] = None,
+    ) -> pd.DataFrame:
         """
         Return all data-points within a given [start_at, end_at) interval,
         optionally selecting a given list of tags.
@@ -153,7 +171,9 @@ class CVec:
         # Implementation to be added
         return pd.DataFrame(columns=["tag_name", "time", "value"])
 
-    def get_tags(self, start_at=None, end_at=None):
+    def get_tags(
+        self, start_at: Optional[datetime] = None, end_at: Optional[datetime] = None
+    ) -> List[Any]:  # TODO: Define a Tag TypedDict or class
         """
         Return a list of tags that had at least one transition in the given [start_at, end_at) interval.
         All tags are returned if no start_at and end_at are given.
