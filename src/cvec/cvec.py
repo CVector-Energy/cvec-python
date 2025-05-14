@@ -4,7 +4,6 @@ from typing import Any, List, Optional
 
 import pandas as pd
 import psycopg
-from psycopg.rows import dict_row
 
 from .span import Span
 
@@ -61,7 +60,6 @@ class CVec:
             password=self.api_key,
             host=self.host,
             dbname=self.tenant,
-            row_factory=dict_row,
         )
 
     def get_spans(
@@ -136,11 +134,11 @@ class CVec:
                 # the query period.
                 raw_end_at = None
                 for row in db_rows:
-                    raw_start_at = row["tag_value_changed_at"]
+                    raw_start_at = row[0]  # tag_value_changed_at
                     value = (
-                        row["value_double"]
-                        if row["value_double"] is not None
-                        else row["value_string"]
+                        row[1]  # value_double
+                        if row[1] is not None 
+                        else row[2]  # value_string
                     )
                     spans.append(
                         Span(
