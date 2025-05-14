@@ -133,12 +133,12 @@ class CVec:
                 # None indicates that the end time is not known; the span extends beyond
                 # the query period.
                 raw_end_at = None
-                for row in db_rows:
-                    raw_start_at = row[0]  # tag_value_changed_at
+                for tag_value_changed_at, value_double, value_string in db_rows:
+                    raw_start_at = tag_value_changed_at
                     value = (
-                        row[1]  # value_double
-                        if row[1] is not None
-                        else row[2]  # value_string
+                        value_double
+                        if value_double is not None
+                        else value_string
                     )
                     spans.append(
                         Span(
