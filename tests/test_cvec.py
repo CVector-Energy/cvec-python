@@ -165,12 +165,33 @@ class TestCVecGetSpans:
         assert spans[2].raw_end_at == time2
 
     # TODO: Add more tests for get_spans:
-    # - No data points
-    # - One data point
-    # - No data points
     # - One data point
     # - With limit parameter
     # - With start_at/end_at parameters affecting results
+
+    @patch("cvec.cvec.psycopg.connect")
+    def test_get_spans_no_data_points(self, mock_connect: MagicMock) -> None:
+        """Test get_spans when no data points are returned from the database."""
+        # Setup mock connection and cursor
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_connect.return_value.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
+
+        mock_cur.fetchall.return_value = []  # No data points
+
+        client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
+        tag_name = "test_tag_no_data"
+        spans = client.get_spans(tag_name=tag_name)
+
+        assert len(spans) == 0
+        mock_cur.execute.assert_called_once()
+
+        # Verify psycopg query parameters
+        (_sql, params) = mock_cur.execute.call_args.args
+        assert params["metric"] == tag_name
+        assert params["end_at"] is None  # Default end_at
+        assert params["limit"] is None  # Default limit
 
     @patch("cvec.cvec.psycopg.connect")
     def test_get_spans_with_end_at_parameter(self, mock_connect: MagicMock) -> None:
