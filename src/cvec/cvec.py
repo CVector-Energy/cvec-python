@@ -137,7 +137,7 @@ class CVec:
                     raw_start_at = row[0]  # tag_value_changed_at
                     value = (
                         row[1]  # value_double
-                        if row[1] is not None 
+                        if row[1] is not None
                         else row[2]  # value_string
                     )
                     spans.append(
