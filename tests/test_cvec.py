@@ -5,7 +5,7 @@ from cvec import CVec
 
 
 class TestCVecConstructor:
-    def test_constructor_with_arguments(self):
+    def test_constructor_with_arguments(self) -> None:
         """Test CVec constructor with all arguments provided."""
         client = CVec(
             host="test_host",
@@ -29,7 +29,7 @@ class TestCVecConstructor:
         },
         clear=True,
     )
-    def test_constructor_with_env_vars(self):
+    def test_constructor_with_env_vars(self) -> None:
         """Test CVec constructor with environment variables."""
         client = CVec(default_start_at="env_start", default_end_at="env_end")
         assert client.host == "env_host"
@@ -39,7 +39,7 @@ class TestCVecConstructor:
         assert client.default_end_at == "env_end"
 
     @patch.dict(os.environ, {}, clear=True)
-    def test_constructor_missing_host_raises_value_error(self):
+    def test_constructor_missing_host_raises_value_error(self) -> None:
         """Test CVec constructor raises ValueError if host is missing."""
         with pytest.raises(
             ValueError,
@@ -48,7 +48,7 @@ class TestCVecConstructor:
             CVec(tenant="test_tenant", api_key="test_api_key")
 
     @patch.dict(os.environ, {}, clear=True)
-    def test_constructor_missing_tenant_raises_value_error(self):
+    def test_constructor_missing_tenant_raises_value_error(self) -> None:
         """Test CVec constructor raises ValueError if tenant is missing."""
         with pytest.raises(
             ValueError,
@@ -57,7 +57,7 @@ class TestCVecConstructor:
             CVec(host="test_host", api_key="test_api_key")
 
     @patch.dict(os.environ, {}, clear=True)
-    def test_constructor_missing_api_key_raises_value_error(self):
+    def test_constructor_missing_api_key_raises_value_error(self) -> None:
         """Test CVec constructor raises ValueError if api_key is missing."""
         with pytest.raises(
             ValueError,
@@ -74,7 +74,7 @@ class TestCVecConstructor:
         },
         clear=True,
     )
-    def test_constructor_missing_tenant_env_var_raises_value_error(self):
+    def test_constructor_missing_tenant_env_var_raises_value_error(self) -> None:
         """Test CVec constructor raises ValueError if CVEC_TENANT env var is missing."""
         with pytest.raises(
             ValueError,
@@ -82,7 +82,7 @@ class TestCVecConstructor:
         ):
             CVec()
 
-    def test_constructor_args_override_env_vars(self):
+    def test_constructor_args_override_env_vars(self) -> None:
         """Test CVec constructor arguments override environment variables."""
         with patch.dict(
             os.environ,
