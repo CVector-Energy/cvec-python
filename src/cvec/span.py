@@ -6,6 +6,12 @@ class Span:
     """
     Represents a time span where a tag has a constant value.
     """
+    id: Optional[Any]
+    tag_name: str
+    value: Optional[Union[float, str]]
+    raw_start_at: datetime
+    raw_end_at: Optional[datetime]
+    metadata: Optional[Any]
 
     def __init__(
         self,
