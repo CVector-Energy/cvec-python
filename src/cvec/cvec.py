@@ -99,7 +99,7 @@ class CVec:
         with self._get_db_connection() as conn:
             with conn.cursor() as cur:
                 query_params = {
-                    "tag_name": tag_name,
+                    "metric": tag_name,
                     "start_at": _start_at,
                     "end_at": _end_at,
                     # Fetch up to 'limit' points. If limit is None, then the `LIMIT NULL` clause
@@ -108,31 +108,15 @@ class CVec:
                 }
 
                 combined_query = """
-                WITH combined_tag_data AS (
-                    SELECT
-                        tag_name_id,
-                        tag_value_changed_at,
-                        tag_value AS value_double,
-                        NULL::text AS value_string
-                    FROM tag_data
-                    UNION ALL
-                    SELECT
-                        tag_name_id,
-                        tag_value_changed_at,
-                        NULL::double precision AS value_double,
-                        tag_value AS value_string
-                    FROM tag_data_str
-                )
                 SELECT
-                    ctd.tag_value_changed_at,
-                    ctd.value_double,
-                    ctd.value_string
-                FROM combined_tag_data ctd
-                JOIN tag_names tn ON ctd.tag_name_id = tn.id
-                WHERE tn.normalized_name = %(tag_name)s
-                  AND (ctd.tag_value_changed_at >= %(start_at)s OR %(start_at)s IS NULL)
-                  AND (ctd.tag_value_changed_at < %(end_at)s OR %(end_at)s IS NULL)
-                ORDER BY ctd.tag_value_changed_at DESC
+                    time,
+                    value_double,
+                    value_string
+                FROM metric_data
+                WHERE metric = %(metric)s
+                  AND (time >= %(start_at)s OR %(start_at)s IS NULL)
+                  AND (time < %(end_at)s OR %(end_at)s IS NULL)
+                ORDER BY time DESC
                 LIMIT %(limit)s
                 """
                 cur.execute(combined_query, query_params)
@@ -142,8 +126,8 @@ class CVec:
                 # None indicates that the end time is not known; the span extends beyond
                 # the query period.
                 raw_end_at = None
-                for tag_value_changed_at, value_double, value_string in db_rows:
-                    raw_start_at = tag_value_changed_at
+                for time, value_double, value_string in db_rows:
+                    raw_start_at = time
                     value = value_double if value_double is not None else value_string
                     spans.append(
                         Span(

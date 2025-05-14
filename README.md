@@ -64,6 +64,31 @@ CREATE VIEW metrics AS
      JOIN tag_names tn ON td.tag_name_id = tn.id;
 ```
 
+## metric_data
+
+The metric_data view unifies the tag_data and tag_data_str tables and joins the tag name.
+
+```sql
+CREATE OR REPLACE VIEW metric_data AS
+    (
+        WITH td AS (SELECT
+                        tag_name_id,
+                        tag_value_changed_at      AS time,
+                        tag_value                 AS value_double,
+                        NULL::text                AS value_string
+                    FROM tag_data
+                    UNION ALL
+                    SELECT
+                        tag_name_id,
+                        tag_value_changed_at      AS time,
+                        NULL::double precision    AS value_double,
+                        tag_value                 AS value_string
+                    FROM tag_data_str)
+        SELECT time, value_double, value_string, tag_name_id AS metric_id, normalized_name AS metric FROM td
+        JOIN tag_names ON tag_name_id = tag_names.id
+    );
+```
+
 # CVec Class
 
 The SDK provides an API client class named `CVec` with the following functions.
