@@ -108,22 +108,31 @@ class CVec:
                 }
 
                 combined_query = f"""
+                WITH combined_tag_data AS (
+                    SELECT
+                        tag_name_id,
+                        tag_value_changed_at,
+                        tag_value AS value_double,
+                        NULL::text AS value_string
+                    FROM {self.tenant}.tag_data
+                    UNION ALL
+                    SELECT
+                        tag_name_id,
+                        tag_value_changed_at,
+                        NULL::double precision AS value_double,
+                        tag_value AS value_string
+                    FROM {self.tenant}.tag_data_str
+                )
                 SELECT
-                    td.tag_value_changed_at,
-                    td.tag_value AS value_double,
-                    NULL::text AS value_string
-                FROM tag_data td
-                JOIN tag_names tn ON td.tag_name_id = tn.id
-                WHERE tn.normalized_name = %(tag_name)s AND (td.tag_value_changed_at >= %(start_at)s OR %(start_at)s IS NULL) AND (td.tag_value_changed_at < %(end_at)s OR %(end_at)s IS NULL)
-                UNION ALL
-                SELECT
-                    tds.tag_value_changed_at,
-                    NULL::double precision AS value_double,
-                    tds.tag_value AS value_string
-                FROM tag_data_str tds
-                JOIN tag_names tn ON tds.tag_name_id = tn.id
-                WHERE tn.normalized_name = %(tag_name)s AND (tds.tag_value_changed_at >= %(start_at)s OR %(start_at)s IS NULL) AND (tds.tag_value_changed_at < %(end_at)s OR %(end_at)s IS NULL)
-                ORDER BY tag_value_changed_at DESC
+                    ctd.tag_value_changed_at,
+                    ctd.value_double,
+                    ctd.value_string
+                FROM combined_tag_data ctd
+                JOIN {self.tenant}.tag_names tn ON ctd.tag_name_id = tn.id
+                WHERE tn.normalized_name = %(tag_name)s
+                  AND (ctd.tag_value_changed_at >= %(start_at)s OR %(start_at)s IS NULL)
+                  AND (ctd.tag_value_changed_at < %(end_at)s OR %(end_at)s IS NULL)
+                ORDER BY ctd.tag_value_changed_at DESC
                 LIMIT %(limit)s
                 """
                 cur.execute(combined_query, query_params)
