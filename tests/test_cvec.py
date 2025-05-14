@@ -139,10 +139,11 @@ class TestCVecGetSpans:
         assert len(spans) == 3
         mock_cur.execute.assert_called_once()
 
-        # Verify query parameters (optional, but good for sanity check)
-        # args, kwargs = mock_cur.execute.call_args
-        # assert kwargs['params']['metric'] == tag_name
-        # assert kwargs['params']['limit'] is None # Default limit
+        # Verify psycopg query parameters
+        (_sql, params), _kwargs = mock_cur.execute.call_args
+        assert params["metric"] == tag_name
+        assert params["end_at"] is None  # Default end_at
+        assert params["limit"] is None  # Default limit
 
         # Span 1 (from newest data point: time3)
         # Based on current implementation, raw_end_at for the first span is None
@@ -170,8 +171,6 @@ class TestCVecGetSpans:
     # - One data point
     # - With limit parameter
     # - With start_at/end_at parameters affecting results
-    # - When _end_at is provided to get_spans (to see its effect on the first span's raw_end_at,
-    #   once the suspected bug is addressed or confirmed as intended behavior)
 
     @patch("cvec.cvec.psycopg.connect")
     def test_get_spans_with_end_at_parameter(self, mock_connect: MagicMock) -> None:
@@ -202,15 +201,14 @@ class TestCVecGetSpans:
         assert len(spans) == 3
         mock_cur.execute.assert_called_once()
 
-        # Verify query parameters
-        _args, kwargs = mock_cur.execute.call_args
-        assert kwargs["params"]["metric"] == tag_name
-        assert kwargs["params"]["end_at"] == query_end_at
-        assert kwargs["params"]["limit"] is None  # Default limit
+        # Verify psycopg query parameters
+        (_sql, params), _kwargs = mock_cur.execute.call_args
+        assert params["metric"] == tag_name
+        assert params["end_at"] == query_end_at
+        assert params["limit"] is None  # Default limit
 
         # Span 1 (from newest data point: time3)
-        # Current implementation results in raw_end_at being None for the newest span,
-        # regardless of the _end_at query parameter.
+        # The raw_end_at is None for the newest span, regardless of the _end_at query parameter.
         assert spans[0].tag_name == tag_name
         assert spans[0].value == 30.0
         assert spans[0].raw_start_at == time3
