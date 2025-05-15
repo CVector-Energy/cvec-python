@@ -230,17 +230,16 @@ class TestCVecGetMetrics:
         mock_cur.execute.assert_called_once()
         sql_query, params = mock_cur.execute.call_args.args
         assert (
-            "SELECT DISTINCT tn.id, tn.normalized_name AS name, tn.birth_at, tn.death_at"
+            "SELECT DISTINCT metric_id AS id, metric AS name, birth_at, death_at"
             in sql_query
         )
-        assert "FROM tag_names tn" in sql_query
-        assert "JOIN (" in sql_query  # Check for join with transitions
+        assert f"FROM {client.tenant}.metric_data" in sql_query
         assert (
-            "WHERE (transitions.time >= %(start_at_param)s OR %(start_at_param)s IS NULL)"
+            "WHERE (time >= %(start_at_param)s OR %(start_at_param)s IS NULL)"
             in sql_query
         )
         assert (
-            "AND (transitions.time < %(end_at_param)s OR %(end_at_param)s IS NULL)"
+            "AND (time < %(end_at_param)s OR %(end_at_param)s IS NULL)"
             in sql_query
         )
         assert params is not None
