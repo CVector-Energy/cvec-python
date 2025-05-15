@@ -2,6 +2,8 @@ import pytest
 import os
 from unittest.mock import patch, MagicMock
 from datetime import datetime
+import pandas as pd
+from pandas.testing import assert_frame_equal
 from cvec import CVec, Span
 
 
