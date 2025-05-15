@@ -302,7 +302,7 @@ class TestCVecGetMetricData:
         assert params["end_at"] is None  # Default end_at
 
         expected_data = {
-            "tag_name": ["tag1", "tag1", "tag2"],
+            "name": ["tag1", "tag1", "tag2"],
             "time": [time1, time2, time3],
             "value": [10.0, 20.0, "val_str"],
         }
@@ -327,7 +327,7 @@ class TestCVecGetMetricData:
         df = client.get_metric_data(names=["non_existent_tag"])
 
         mock_cur.execute.assert_called_once()
-        expected_df = pd.DataFrame(columns=["tag_name", "time", "value"])
+        expected_df = pd.DataFrame(columns=["name", "time", "value"])
         assert_frame_equal(df, expected_df, check_dtype=False)
 
     @patch("cvec.cvec.psycopg.connect")

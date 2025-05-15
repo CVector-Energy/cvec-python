@@ -151,7 +151,7 @@ class CVec:
         """
         Return all data-points within a given [start_at, end_at) interval,
         optionally selecting a given list of metric names.
-        The return value is a Pandas DataFrame with three columns: tag_name, time, value.
+        The return value is a Pandas DataFrame with three columns: name, time, value.
         One row is returned for each tag value transition.
         """
         _start_at = start_at or self.default_start_at
@@ -168,12 +168,12 @@ class CVec:
         }
 
         sql_query = """
-            SELECT metric AS tag_name, time, value_double, value_string
+            SELECT metric AS name, time, value_double, value_string
             FROM metric_data
             WHERE (time >= %(start_at)s OR %(start_at)s IS NULL)
               AND (time < %(end_at)s OR %(end_at)s IS NULL)
               AND (%(tag_names_is_null)s IS TRUE OR metric = ANY(%(tag_names_list)s))
-            ORDER BY tag_name, time ASC
+            ORDER BY name, time ASC
         """
 
         with self._get_db_connection() as conn:
@@ -182,11 +182,11 @@ class CVec:
                 rows = cur.fetchall()
 
         if not rows:
-            return pd.DataFrame(columns=["tag_name", "time", "value"])
+            return pd.DataFrame(columns=["name", "time", "value"])
 
         # Create DataFrame from fetched rows
         df = pd.DataFrame(
-            rows, columns=["tag_name", "time", "value_double", "value_string"]
+            rows, columns=["name", "time", "value_double", "value_string"]
         )
 
         # Combine value_double and value_string into a single 'value' column
@@ -194,7 +194,7 @@ class CVec:
         df["value"] = df["value_double"].combine_first(df["value_string"])
 
         # Return the DataFrame with the required columns
-        return df[["tag_name", "time", "value"]]
+        return df[["name", "time", "value"]]
 
     def get_metrics(
         self, start_at: Optional[datetime] = None, end_at: Optional[datetime] = None
