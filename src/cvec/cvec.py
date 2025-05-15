@@ -209,26 +209,26 @@ class CVec:
         params: Optional[dict[str, Any]]
 
         if start_at is None and end_at is None:
-            # Case 1: No time interval specified by arguments, return all tags
+            # No time interval specified by arguments, return all tags
             sql_query = f"""
                 SELECT id, normalized_name AS name, birth_at, death_at
-                FROM {self.tenant}.tag_names
+                FROM tag_names
                 ORDER BY name ASC;
             """
             params = None
         else:
-            # Case 2: Time interval specified, find tags with transitions in the interval
+            # Time interval specified, find tags with transitions in the interval
             _start_at = start_at or self.default_start_at
             _end_at = end_at or self.default_end_at
 
             params = {"start_at_param": _start_at, "end_at_param": _end_at}
             sql_query = f"""
                 SELECT DISTINCT tn.id, tn.normalized_name AS name, tn.birth_at, tn.death_at
-                FROM {self.tenant}.tag_names tn
+                FROM tag_names tn
                 JOIN (
-                    SELECT tag_name_id, tag_value_changed_at AS time FROM {self.tenant}.tag_data
+                    SELECT tag_name_id, tag_value_changed_at AS time FROM tag_data
                     UNION ALL
-                    SELECT tag_name_id, tag_value_changed_at AS time FROM {self.tenant}.tag_data_str
+                    SELECT tag_name_id, tag_value_changed_at AS time FROM tag_data_str
                 ) AS transitions ON tn.id = transitions.tag_name_id
                 WHERE (transitions.time >= %(start_at_param)s OR %(start_at_param)s IS NULL)
                   AND (transitions.time < %(end_at_param)s OR %(end_at_param)s IS NULL)
