@@ -82,8 +82,7 @@ class CVec:
         - `raw_start_at`: The timestamp of the value change that initiated this span's value.
           This will be >= `_start_at` if `_start_at` was specified.
         - `raw_end_at`: The timestamp marking the end of this span's constant value.
-          For the newest span, the value is `None`.
-          For other spans, it's the `raw_start_at` of the next newer span.
+          For the newest span, the value is `None`. For other spans, it's the raw_start_at of the immediately preceding span in the returned list (which, being sorted newest-first, is the next chronologically newer span). This timestamp marks the end of the current span's constant value.
         - `id`: Currently `None`.
         - `metadata`: Currently `None`.
 
