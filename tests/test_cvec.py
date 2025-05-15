@@ -136,7 +136,7 @@ class TestCVecGetSpans:
 
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
         tag_name = "test_tag"
-        spans = client.get_spans(tag_name=tag_name)
+        spans = client.get_spans(name=tag_name)
 
         assert len(spans) == 3
         mock_cur.execute.assert_called_once()
@@ -149,19 +149,19 @@ class TestCVecGetSpans:
 
         # Span 1 (from newest data point: time3)
         # The raw_end_at is None for the newest span, because the span is still open.
-        assert spans[0].tag_name == tag_name
+        assert spans[0].name == tag_name
         assert spans[0].value == 30.0
         assert spans[0].raw_start_at == time3
         assert spans[0].raw_end_at is None
 
         # Span 2 (from data point: time2)
-        assert spans[1].tag_name == tag_name
+        assert spans[1].name == tag_name
         assert spans[1].value == "val2"
         assert spans[1].raw_start_at == time2
         assert spans[1].raw_end_at == time3
 
         # Span 3 (from oldest data point: time1)
-        assert spans[2].tag_name == tag_name
+        assert spans[2].name == tag_name
         assert spans[2].value == 10.0
         assert spans[2].raw_start_at == time1
         assert spans[2].raw_end_at == time2
@@ -343,7 +343,7 @@ class TestCVecGetMetricData:
 
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
         tag_name = "test_tag_no_data"
-        spans = client.get_spans(tag_name=tag_name)
+        spans = client.get_spans(name=tag_name)
 
         assert len(spans) == 0
         mock_cur.execute.assert_called_once()
@@ -378,7 +378,7 @@ class TestCVecGetMetricData:
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
         tag_name = "test_tag_limited"
         query_limit = 2
-        spans = client.get_spans(tag_name=tag_name, limit=query_limit)
+        spans = client.get_spans(name=tag_name, limit=query_limit)
 
         mock_cur.execute.assert_called_once()
 
@@ -411,7 +411,7 @@ class TestCVecGetMetricData:
         tag_name = "test_tag"
         # Provide an end_at time that is after all sample data points
         query_end_at = datetime(2023, 1, 1, 13, 0, 0)
-        spans = client.get_spans(tag_name=tag_name, end_at=query_end_at)
+        spans = client.get_spans(name=tag_name, end_at=query_end_at)
 
         assert len(spans) == 3
         mock_cur.execute.assert_called_once()
@@ -424,19 +424,19 @@ class TestCVecGetMetricData:
 
         # Span 1 (from newest data point: time3)
         # The raw_end_at is None for the newest span, regardless of the _end_at query parameter.
-        assert spans[0].tag_name == tag_name
+        assert spans[0].name == tag_name
         assert spans[0].value == 30.0
         assert spans[0].raw_start_at == time3
         assert spans[0].raw_end_at is None
 
         # Span 2 (from data point: time2)
-        assert spans[1].tag_name == tag_name
+        assert spans[1].name == tag_name
         assert spans[1].value == "val2"
         assert spans[1].raw_start_at == time2
         assert spans[1].raw_end_at == time3
 
         # Span 3 (from oldest data point: time1)
-        assert spans[2].tag_name == tag_name
+        assert spans[2].name == tag_name
         assert spans[2].value == 10.0
         assert spans[2].raw_start_at == time1
         assert spans[2].raw_end_at == time2
