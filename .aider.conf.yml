@@ -1,6 +1,5 @@
 lint-cmd: 
-  - "python: poetry run black"
-  - "python: poetry run mypy --strict"
+  - "python: scripts/lint.sh"
 auto-lint: true
 test-cmd: poetry run pytest
 auto-test: true
