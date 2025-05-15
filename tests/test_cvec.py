@@ -291,13 +291,13 @@ class TestCVecGetMetricData:
         mock_cur.fetchall.return_value = mock_db_rows
 
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        tag_names_to_query = ["tag1", "tag2"]
-        df = client.get_metric_data(tag_names=tag_names_to_query)
+        names_to_query = ["tag1", "tag2"]
+        df = client.get_metric_data(names=names_to_query)
 
         mock_cur.execute.assert_called_once()
         (_sql, params), _kwargs = mock_cur.execute.call_args
         assert params["tag_names_is_null"] is False
-        assert params["tag_names_list"] == tuple(tag_names_to_query)
+        assert params["tag_names_list"] == tuple(names_to_query)
         assert params["start_at"] is None  # Default start_at
         assert params["end_at"] is None  # Default end_at
 
@@ -324,7 +324,7 @@ class TestCVecGetMetricData:
         mock_cur.fetchall.return_value = []
 
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        df = client.get_metric_data(tag_names=["non_existent_tag"])
+        df = client.get_metric_data(names=["non_existent_tag"])
 
         mock_cur.execute.assert_called_once()
         expected_df = pd.DataFrame(columns=["tag_name", "time", "value"])

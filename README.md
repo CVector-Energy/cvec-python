@@ -113,9 +113,9 @@ Each `Span` object in the returned list represents a period where the metric's v
 Returns a list of `Span` objects, sorted in descending chronological order (newest span first).
 If no relevant value changes are found, an empty list is returned.
 
-## `get_metric_data(?tag_names, ?start_at, ?end_at)`
+## `get_metric_data(?names, ?start_at, ?end_at)`
 
-Return all data-points within a given [`start_at`, `end_at`) interval, optionally selecting a given list of tags. The return value is a Pandas DataFrame with three columns: tag_name, time, value. One row is returned for each tag value transition.
+Return all data-points within a given [`start_at`, `end_at`) interval, optionally selecting a given list of metric names. The return value is a Pandas DataFrame with three columns: tag_name, time, value. One row is returned for each tag value transition.
 
 ## `get_metrics(?start_at, ?end_at)`
 

@@ -144,13 +144,13 @@ class CVec:
 
     def get_metric_data(
         self,
-        tag_names: Optional[List[str]] = None,
+        names: Optional[List[str]] = None,
         start_at: Optional[datetime] = None,
         end_at: Optional[datetime] = None,
     ) -> pd.DataFrame:
         """
         Return all data-points within a given [start_at, end_at) interval,
-        optionally selecting a given list of tags.
+        optionally selecting a given list of metric names.
         The return value is a Pandas DataFrame with three columns: tag_name, time, value.
         One row is returned for each tag value transition.
         """
@@ -160,11 +160,11 @@ class CVec:
         params = {
             "start_at": _start_at,
             "end_at": _end_at,
-            "tag_names_is_null": tag_names is None,
-            # Pass an empty tuple if tag_names is None or empty, otherwise the tuple of tag_names.
-            # ANY(%(empty_tuple)s) will correctly result in no matches if tag_names is empty.
-            # If tag_names is None, the tag_names_is_null condition handles it.
-            "tag_names_list": tuple(tag_names) if tag_names else [],
+            "tag_names_is_null": names is None,
+            # Pass an empty tuple if names is None or empty, otherwise the tuple of names.
+            # ANY(%(empty_tuple)s) will correctly result in no matches if names is empty.
+            # If names is None, the tag_names_is_null condition handles it.
+            "tag_names_list": tuple(names) if names else [],
         }
 
         sql_query = """
