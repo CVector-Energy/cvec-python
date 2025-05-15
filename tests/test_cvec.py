@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 from datetime import datetime
 import pandas as pd
 from pandas.testing import assert_frame_equal
-from cvec import CVec, Span
+from cvec import CVec, Span, Metric
 
 
 class TestCVecConstructor:
@@ -165,6 +165,101 @@ class TestCVecGetSpans:
         assert spans[2].value == 10.0
         assert spans[2].raw_start_at == time1
         assert spans[2].raw_end_at == time2
+
+
+class TestCVecGetMetrics:
+    @patch("cvec.cvec.psycopg.connect")
+    def test_get_metrics_no_interval(self, mock_connect: MagicMock) -> None:
+        """Test get_metrics when no start_at or end_at is provided (fetches all metrics)."""
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_connect.return_value.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
+
+        time_birth1 = datetime(2023, 1, 1, 0, 0, 0)
+        time_death1 = datetime(2023, 1, 10, 0, 0, 0)
+        time_birth2 = datetime(2023, 2, 1, 0, 0, 0)
+        mock_db_rows = [
+            (1, "metric1", time_birth1, time_death1),
+            (2, "metric2", time_birth2, None),
+        ]
+        mock_cur.fetchall.return_value = mock_db_rows
+
+        client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
+        metrics = client.get_metrics()
+
+        mock_cur.execute.assert_called_once()
+        sql_query, params = mock_cur.execute.call_args.args
+        assert "SELECT id, normalized_name AS name, birth_at, death_at" in sql_query
+        assert "FROM tag_names" in sql_query
+        assert "ORDER BY name ASC" in sql_query
+        assert params is None  # No params when fetching all
+
+        assert len(metrics) == 2
+        assert isinstance(metrics[0], Metric)
+        assert metrics[0].id == 1
+        assert metrics[0].name == "metric1"
+        assert metrics[0].birth_at == time_birth1
+        assert metrics[0].death_at == time_death1
+
+        assert isinstance(metrics[1], Metric)
+        assert metrics[1].id == 2
+        assert metrics[1].name == "metric2"
+        assert metrics[1].birth_at == time_birth2
+        assert metrics[1].death_at is None
+
+    @patch("cvec.cvec.psycopg.connect")
+    def test_get_metrics_with_interval(self, mock_connect: MagicMock) -> None:
+        """Test get_metrics when a start_at and end_at interval is provided."""
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_connect.return_value.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
+
+        time_birth1 = datetime(2023, 1, 1, 0, 0, 0)
+        mock_db_rows = [
+            (1, "metric_in_interval", time_birth1, None),
+        ]
+        mock_cur.fetchall.return_value = mock_db_rows
+
+        client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
+        start_query = datetime(2023, 1, 5, 0, 0, 0)
+        end_query = datetime(2023, 1, 15, 0, 0, 0)
+        metrics = client.get_metrics(start_at=start_query, end_at=end_query)
+
+        mock_cur.execute.assert_called_once()
+        sql_query, params = mock_cur.execute.call_args.args
+        assert "SELECT DISTINCT tn.id, tn.normalized_name AS name, tn.birth_at, tn.death_at" in sql_query
+        assert "FROM tag_names tn" in sql_query
+        assert "JOIN (" in sql_query # Check for join with transitions
+        assert "WHERE (transitions.time >= %(start_at_param)s OR %(start_at_param)s IS NULL)" in sql_query
+        assert "AND (transitions.time < %(end_at_param)s OR %(end_at_param)s IS NULL)" in sql_query
+        assert params is not None
+        assert params["start_at_param"] == start_query
+        assert params["end_at_param"] == end_query
+
+        assert len(metrics) == 1
+        assert isinstance(metrics[0], Metric)
+        assert metrics[0].id == 1
+        assert metrics[0].name == "metric_in_interval"
+        assert metrics[0].birth_at == time_birth1
+        assert metrics[0].death_at is None
+
+    @patch("cvec.cvec.psycopg.connect")
+    def test_get_metrics_no_data_found(self, mock_connect: MagicMock) -> None:
+        """Test get_metrics when no metrics are found for the given criteria."""
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_connect.return_value.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
+
+        mock_cur.fetchall.return_value = [] # No rows returned
+
+        client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
+        metrics = client.get_metrics(start_at=datetime(2024,1,1), end_at=datetime(2024,1,2))
+
+        mock_cur.execute.assert_called_once()
+        assert len(metrics) == 0
 
 
 class TestCVecGetMetricData:
