@@ -3,6 +3,7 @@ import os
 from unittest.mock import patch, MagicMock
 from datetime import datetime
 import pandas as pd
+import numpy as np
 from pandas.testing import assert_frame_equal
 from cvec import CVec, Span, Metric
 
@@ -304,8 +305,8 @@ class TestCVecGetMetricData:
         expected_data = {
             "name": ["tag1", "tag1", "tag2"],
             "time": [time1, time2, time3],
-            "value_double": [10.0, 20.0, pd.NA],  # Use pd.NA for missing float
-            "value_string": [pd.NA, pd.NA, "val_str"],  # Use pd.NA for missing string
+            "value_double": [10.0, 20.0, np.nan],  # Use np.nan for missing float
+            "value_string": [None, None, "val_str"],  # Use None for missing string
         }
         expected_df = pd.DataFrame(expected_data)
 
