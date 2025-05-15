@@ -334,16 +334,6 @@ class TestCVecGetMetricData:
         expected_df = pd.DataFrame(columns=["tag_name", "time", "value"])
         assert_frame_equal(df, expected_df, check_dtype=False)
 
-    # TODO: Add more tests for get_metric_data:
-    # - With start_at/end_at parameters
-    # - With tag_names=None (all tags)
-    # - With tag_names=[] (empty list, should return no data based on current query logic)
-    # - Mixed numeric and string values for the same tag (if applicable/possible)
-
-    # TODO: Add more tests for get_spans:
-    # - One data point
-    # - With start_at/end_at parameters affecting results
-
     @patch("cvec.cvec.psycopg.connect")
     def test_get_spans_no_data_points(self, mock_connect: MagicMock) -> None:
         """Test get_spans when no data points are returned from the database."""

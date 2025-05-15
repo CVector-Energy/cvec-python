@@ -84,7 +84,7 @@ CREATE OR REPLACE VIEW metric_data AS
                         NULL::double precision    AS value_double,
                         tag_value                 AS value_string
                     FROM tag_data_str)
-        SELECT time, value_double, value_string, tag_name_id AS metric_id, normalized_name AS metric FROM td
+        SELECT time, value_double, value_string, tag_name_id AS metric_id, normalized_name AS metric, birth_at, death_at FROM td
         JOIN tag_names ON tag_name_id = tag_names.id
     );
 ```
