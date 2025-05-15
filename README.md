@@ -106,7 +106,7 @@ Each `Span` object in the returned list represents a period where the tag's valu
 - `value`: The tag's value during the span.
 - `tag_name`: The name of the tag.
 - `raw_start_at`: The timestamp of the value change that initiated this span's value. This will be greater than or equal to the query's `start_at` if one was specified.
-- `raw_end_at`: The timestamp marking the end of this span's constant value. For the newest span (first in the returned list), this is the query's `end_at` parameter (if specified, otherwise `None`). For other spans, it's the `raw_start_at` of the chronologically newer preceding span in the list. If the query's `end_at` is not specified and it's the newest span based on available data, this field will be `None`, indicating the span continues indefinitely.
+- `raw_end_at`: The timestamp marking the end of this span's constant value. For the newest span, the value is `None`. For other spans, it's the `raw_start_at` of the chronologically newer preceding span in the list.
 - `id`: Currently `None`. In a future version of the SDK, this will be the span's unique identifier.
 - `metadata`: Currently `None`. In a future version, this can be used to store annotations or other metadata related to the span.
 
