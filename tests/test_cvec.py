@@ -166,6 +166,76 @@ class TestCVecGetSpans:
         assert spans[2].raw_start_at == time1
         assert spans[2].raw_end_at == time2
 
+
+class TestCVecGetMetricData:
+    @patch("cvec.cvec.psycopg.connect")
+    def test_get_metric_data_basic_case(self, mock_connect: MagicMock) -> None:
+        """Test get_metric_data with a few data points for multiple tags."""
+        # Setup mock connection and cursor
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_connect.return_value.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
+
+        # Sample data (metric, time, value_double, value_string)
+        time1 = datetime(2023, 1, 1, 10, 0, 0)
+        time2 = datetime(2023, 1, 1, 11, 0, 0)
+        time3 = datetime(2023, 1, 1, 12, 0, 0)
+        mock_db_rows = [
+            ("tag1", time1, 10.0, None),
+            ("tag1", time2, 20.0, None),
+            ("tag2", time3, None, "val_str"),
+        ]
+        mock_cur.fetchall.return_value = mock_db_rows
+
+        client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
+        tag_names_to_query = ["tag1", "tag2"]
+        df = client.get_metric_data(tag_names=tag_names_to_query)
+
+        mock_cur.execute.assert_called_once()
+        (_sql, params), _kwargs = mock_cur.execute.call_args
+        assert params["tag_names_is_null"] is False
+        assert params["tag_names_list"] == tuple(tag_names_to_query)
+        assert params["start_at"] is None # Default start_at
+        assert params["end_at"] is None # Default end_at
+
+
+        expected_data = {
+            "tag_name": ["tag1", "tag1", "tag2"],
+            "time": [time1, time2, time3],
+            "value": [10.0, 20.0, "val_str"],
+        }
+        expected_df = pd.DataFrame(expected_data)
+        # Convert 'value' column to object to handle mixed types for comparison
+        expected_df["value"] = expected_df["value"].astype(object)
+        df["value"] = df["value"].astype(object)
+
+
+        assert_frame_equal(df, expected_df, check_dtype=False)
+
+    @patch("cvec.cvec.psycopg.connect")
+    def test_get_metric_data_no_data_points(self, mock_connect: MagicMock) -> None:
+        """Test get_metric_data when no data points are returned."""
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_connect.return_value.__enter__.return_value = mock_conn
+        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
+
+        mock_cur.fetchall.return_value = []
+
+        client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
+        df = client.get_metric_data(tag_names=["non_existent_tag"])
+
+        mock_cur.execute.assert_called_once()
+        expected_df = pd.DataFrame(columns=["tag_name", "time", "value"])
+        assert_frame_equal(df, expected_df, check_dtype=False)
+
+    # TODO: Add more tests for get_metric_data:
+    # - With start_at/end_at parameters
+    # - With tag_names=None (all tags)
+    # - With tag_names=[] (empty list, should return no data based on current query logic)
+    # - Mixed numeric and string values for the same tag (if applicable/possible)
+
     # TODO: Add more tests for get_spans:
     # - One data point
     # - With start_at/end_at parameters affecting results
