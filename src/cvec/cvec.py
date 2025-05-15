@@ -182,7 +182,9 @@ class CVec:
                 rows = cur.fetchall()
 
         if not rows:
-            return pd.DataFrame(columns=["name", "time", "value_double", "value_string"])
+            return pd.DataFrame(
+                columns=["name", "time", "value_double", "value_string"]
+            )
 
         # Create DataFrame from fetched rows
         df = pd.DataFrame(
