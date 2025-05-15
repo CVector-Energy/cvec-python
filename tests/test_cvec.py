@@ -238,10 +238,7 @@ class TestCVecGetMetrics:
             "WHERE (time >= %(start_at_param)s OR %(start_at_param)s IS NULL)"
             in sql_query
         )
-        assert (
-            "AND (time < %(end_at_param)s OR %(end_at_param)s IS NULL)"
-            in sql_query
-        )
+        assert "AND (time < %(end_at_param)s OR %(end_at_param)s IS NULL)" in sql_query
         assert params is not None
         assert params["start_at_param"] == start_query
         assert params["end_at_param"] == end_query
