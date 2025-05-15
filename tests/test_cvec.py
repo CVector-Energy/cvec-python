@@ -196,9 +196,8 @@ class TestCVecGetMetricData:
         (_sql, params), _kwargs = mock_cur.execute.call_args
         assert params["tag_names_is_null"] is False
         assert params["tag_names_list"] == tuple(tag_names_to_query)
-        assert params["start_at"] is None # Default start_at
-        assert params["end_at"] is None # Default end_at
-
+        assert params["start_at"] is None  # Default start_at
+        assert params["end_at"] is None  # Default end_at
 
         expected_data = {
             "tag_name": ["tag1", "tag1", "tag2"],
@@ -209,7 +208,6 @@ class TestCVecGetMetricData:
         # Convert 'value' column to object to handle mixed types for comparison
         expected_df["value"] = expected_df["value"].astype(object)
         df["value"] = df["value"].astype(object)
-
 
         assert_frame_equal(df, expected_df, check_dtype=False)
 
