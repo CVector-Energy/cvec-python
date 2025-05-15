@@ -69,7 +69,7 @@ CREATE VIEW metrics AS
 The metric_data view unifies the tag_data and tag_data_str tables and joins the tag name.
 
 ```sql
-CREATE OR REPLACE VIEW metric_data AS
+CREATE VIEW metric_data AS
     (
         WITH td AS (SELECT
                         tag_name_id,
