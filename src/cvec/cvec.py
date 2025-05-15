@@ -224,15 +224,10 @@ class CVec:
 
             params = {"start_at_param": _start_at, "end_at_param": _end_at}
             sql_query = f"""
-                SELECT DISTINCT tn.id, tn.normalized_name AS name, tn.birth_at, tn.death_at
-                FROM tag_names tn
-                JOIN (
-                    SELECT tag_name_id, tag_value_changed_at AS time FROM tag_data
-                    UNION ALL
-                    SELECT tag_name_id, tag_value_changed_at AS time FROM tag_data_str
-                ) AS transitions ON tn.id = transitions.tag_name_id
-                WHERE (transitions.time >= %(start_at_param)s OR %(start_at_param)s IS NULL)
-                  AND (transitions.time < %(end_at_param)s OR %(end_at_param)s IS NULL)
+                SELECT DISTINCT metric_id AS id, metric AS name, birth_at, death_at
+                FROM {self.tenant}.metric_data
+                WHERE (time >= %(start_at_param)s OR %(start_at_param)s IS NULL)
+                  AND (time < %(end_at_param)s OR %(end_at_param)s IS NULL)
                 ORDER BY name ASC;
             """
 
