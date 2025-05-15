@@ -205,5 +205,49 @@ class CVec:
         All tags are returned if no start_at and end_at are given.
         Each tag has {id, name, birth_at, death_at}.
         """
-        # Implementation to be added
-        return []
+        sql_query: str
+        params: Optional[dict[str, Any]]
+
+        if start_at is None and end_at is None:
+            # Case 1: No time interval specified by arguments, return all tags
+            sql_query = f"""
+                SELECT id, normalized_name AS name, birth_at, death_at
+                FROM {self.tenant}.tag_names
+                ORDER BY name ASC;
+            """
+            params = None
+        else:
+            # Case 2: Time interval specified, find tags with transitions in the interval
+            _start_at = start_at or self.default_start_at
+            _end_at = end_at or self.default_end_at
+
+            params = {"start_at_param": _start_at, "end_at_param": _end_at}
+            sql_query = f"""
+                SELECT DISTINCT tn.id, tn.normalized_name AS name, tn.birth_at, tn.death_at
+                FROM {self.tenant}.tag_names tn
+                JOIN (
+                    SELECT tag_name_id, tag_value_changed_at AS time FROM {self.tenant}.tag_data
+                    UNION ALL
+                    SELECT tag_name_id, tag_value_changed_at AS time FROM {self.tenant}.tag_data_str
+                ) AS transitions ON tn.id = transitions.tag_name_id
+                WHERE (transitions.time >= %(start_at_param)s OR %(start_at_param)s IS NULL)
+                  AND (transitions.time < %(end_at_param)s OR %(end_at_param)s IS NULL)
+                ORDER BY name ASC;
+            """
+
+        with self._get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql_query, params)
+                rows = cur.fetchall()
+
+        # Format rows into list of dictionaries
+        tags_list = [
+            {
+                "id": row[0],
+                "name": row[1],
+                "birth_at": row[2],
+                "death_at": row[3],
+            }
+            for row in rows
+        ]
+        return tags_list
