@@ -65,20 +65,20 @@ class CVec:
 
     def get_spans(
         self,
-        tag_name: str,
+        name: str,
         start_at: Optional[datetime] = None,
         end_at: Optional[datetime] = None,
         limit: Optional[int] = None,
     ) -> List[Span]:
         """
-        Return time spans for a tag. Spans are generated from value changes
+        Return time spans for a metric. Spans are generated from value changes
         that occur after `start_at` (if specified) and before `end_at` (if specified).
         If `start_at` is `None` (e.g., not provided via argument or class default),
         the query is unbounded at the start. If `end_at` is `None`, it's unbounded at the end.
 
-        Each span represents a period where the tag's value is constant.
-        - `value`: The tag's value during the span.
-        - `tag_name`: The name of the tag.
+        Each span represents a period where the metric's value is constant.
+        - `value`: The metric's value during the span.
+        - `name`: The name of the metric.
         - `raw_start_at`: The timestamp of the value change that initiated this span's value.
           This will be >= `_start_at` if `_start_at` was specified.
         - `raw_end_at`: The timestamp marking the end of this span's constant value.
@@ -98,7 +98,7 @@ class CVec:
         with self._get_db_connection() as conn:
             with conn.cursor() as cur:
                 query_params = {
-                    "metric": tag_name,
+                    "metric": name,
                     "start_at": _start_at,
                     "end_at": _end_at,
                     # Fetch up to 'limit' points. If limit is None, then the `LIMIT NULL` clause
@@ -131,7 +131,7 @@ class CVec:
                     spans.append(
                         Span(
                             id=None,
-                            tag_name=tag_name,
+                            name=name,
                             value=value,
                             raw_start_at=raw_start_at,
                             raw_end_at=raw_end_at,

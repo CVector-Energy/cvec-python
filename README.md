@@ -97,14 +97,14 @@ The SDK provides an API client class named `CVec` with the following functions.
 
 Setup the SDK with the given host and API Key. The host and API key are loaded from environment variables CVEC_HOST, CVEC_TENANT, CVEC_API_KEY, if they are not given as arguments to the constructor. The `default_start_at` and `default_end_at` constrain most API calls, and can be overridden by the `start_at` and `end_at` arguments to each API function.
 
-## `get_spans(tag_name, ?start_at, ?end_at, ?limit)`
+## `get_spans(name, ?start_at, ?end_at, ?limit)`
 
-Return time spans for a tag. Spans are generated from value changes that occur after `start_at` (if specified) and before `end_at` (if specified).
+Return time spans for a metric. Spans are generated from value changes that occur after `start_at` (if specified) and before `end_at` (if specified).
 If `start_at` is `None` (e.g., not provided as an argument and no class default `default_start_at` is set), the query for value changes is unbounded at the start. Similarly, if `end_at` is `None`, the query is unbounded at the end.
 
-Each `Span` object in the returned list represents a period where the tag's value is constant and has the following attributes:
-- `value`: The tag's value during the span.
-- `tag_name`: The name of the tag.
+Each `Span` object in the returned list represents a period where the metric's value is constant and has the following attributes:
+- `value`: The metric's value during the span.
+- `name`: The name of the metric.
 - `raw_start_at`: The timestamp of the value change that initiated this span's value. This will be greater than or equal to the query's `start_at` if one was specified.
 - `raw_end_at`: The timestamp marking the end of this span's constant value. For the newest span, the value is `None`. For other spans, it's the `raw_start_at` of the chronologically newer preceding span in the list.
 - `id`: Currently `None`. In a future version of the SDK, this will be the span's unique identifier.
