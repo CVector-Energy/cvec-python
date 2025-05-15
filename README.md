@@ -117,6 +117,6 @@ If no relevant value changes are found, an empty list is returned.
 
 Return all data-points within a given [`start_at`, `end_at`) interval, optionally selecting a given list of tags. The return value is a Pandas DataFrame with three columns: tag_name, time, value. One row is returned for each tag value transition.
 
-## `get_tags(?start_at, ?end_at)`
+## `get_metrics(?start_at, ?end_at)`
 
-Return a list of tags that had at least one transition in the given [`start_at`, `end_at`) interval. All tags are returned if no `start_at` and `end_at` are given. Each tag has {id, name, birth_at, death_at}.
+Return a list of metrics that had at least one transition in the given [`start_at`, `end_at`) interval. All metrics are returned if no `start_at` and `end_at` are given. Each metric has {id, name, birth_at, death_at}.

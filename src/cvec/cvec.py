@@ -197,13 +197,13 @@ class CVec:
         # Return the DataFrame with the required columns
         return df[["tag_name", "time", "value"]]
 
-    def get_tags(
+    def get_metrics(
         self, start_at: Optional[datetime] = None, end_at: Optional[datetime] = None
-    ) -> List[Any]:  # TODO: Define a Tag TypedDict or class
+    ) -> List[Any]:  # TODO: Define a Metric TypedDict or class
         """
-        Return a list of tags that had at least one transition in the given [start_at, end_at) interval.
-        All tags are returned if no start_at and end_at are given.
-        Each tag has {id, name, birth_at, death_at}.
+        Return a list of metrics that had at least one transition in the given [start_at, end_at) interval.
+        All metrics are returned if no start_at and end_at are given.
+        Each metric has {id, name, birth_at, death_at}.
         """
         sql_query: str
         params: Optional[dict[str, Any]]
