@@ -6,6 +6,7 @@ import pandas as pd
 import psycopg
 
 from .span import Span
+from .metric import Metric
 
 
 class CVec:
@@ -199,7 +200,7 @@ class CVec:
 
     def get_metrics(
         self, start_at: Optional[datetime] = None, end_at: Optional[datetime] = None
-    ) -> List[Any]:  # TODO: Define a Metric TypedDict or class
+    ) -> List[Metric]:
         """
         Return a list of metrics that had at least one transition in the given [start_at, end_at) interval.
         All metrics are returned if no start_at and end_at are given.
@@ -240,14 +241,14 @@ class CVec:
                 cur.execute(sql_query, params)
                 rows = cur.fetchall()
 
-        # Format rows into list of dictionaries
-        tags_list = [
-            {
-                "id": row[0],
-                "name": row[1],
-                "birth_at": row[2],
-                "death_at": row[3],
-            }
+        # Format rows into list of Metric objects
+        metrics_list = [
+            Metric(
+                id=row[0],
+                name=row[1],
+                birth_at=row[2],
+                death_at=row[3],
+            )
             for row in rows
         ]
-        return tags_list
+        return metrics_list
