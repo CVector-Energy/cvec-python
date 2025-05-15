@@ -115,7 +115,7 @@ If no relevant value changes are found, an empty list is returned.
 
 ## `get_metric_data(?names, ?start_at, ?end_at)`
 
-Return all data-points within a given [`start_at`, `end_at`) interval, optionally selecting a given list of metric names. The return value is a Pandas DataFrame with three columns: name, time, value. One row is returned for each tag value transition.
+Return all data-points within a given [`start_at`, `end_at`) interval, optionally selecting a given list of metric names. The return value is a Pandas DataFrame with four columns: name, time, value_double, value_string. One row is returned for each tag value transition.
 
 ## `get_metrics(?start_at, ?end_at)`
 

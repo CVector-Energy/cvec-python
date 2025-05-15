@@ -304,14 +304,18 @@ class TestCVecGetMetricData:
         expected_data = {
             "name": ["tag1", "tag1", "tag2"],
             "time": [time1, time2, time3],
-            "value": [10.0, 20.0, "val_str"],
+            "value_double": [10.0, 20.0, pd.NA],  # Use pd.NA for missing float
+            "value_string": [pd.NA, pd.NA, "val_str"],  # Use pd.NA for missing string
         }
         expected_df = pd.DataFrame(expected_data)
-        # Convert 'value' column to object to handle mixed types for comparison
-        expected_df["value"] = expected_df["value"].astype(object)
-        df["value"] = df["value"].astype(object)
 
-        assert_frame_equal(df, expected_df, check_dtype=False)
+        # Ensure correct dtypes for comparison, especially for NA handling
+        expected_df = expected_df.astype(
+            {"value_double": "float64", "value_string": "object"}
+        )
+        df = df.astype({"value_double": "float64", "value_string": "object"})
+
+        assert_frame_equal(df, expected_df, check_dtype=True)
 
     @patch("cvec.cvec.psycopg.connect")
     def test_get_metric_data_no_data_points(self, mock_connect: MagicMock) -> None:
@@ -327,8 +331,27 @@ class TestCVecGetMetricData:
         df = client.get_metric_data(names=["non_existent_tag"])
 
         mock_cur.execute.assert_called_once()
-        expected_df = pd.DataFrame(columns=["name", "time", "value"])
-        assert_frame_equal(df, expected_df, check_dtype=False)
+        expected_df = pd.DataFrame(
+            columns=["name", "time", "value_double", "value_string"]
+        )
+        # Ensure correct dtypes for empty DataFrame comparison
+        expected_df = expected_df.astype(
+            {
+                "name": "object",
+                "time": "datetime64[ns]",
+                "value_double": "float64",
+                "value_string": "object",
+            }
+        )
+        df = df.astype(
+            {
+                "name": "object",
+                "time": "datetime64[ns]",
+                "value_double": "float64",
+                "value_string": "object",
+            }
+        )
+        assert_frame_equal(df, expected_df, check_dtype=True)
 
     @patch("cvec.cvec.psycopg.connect")
     def test_get_spans_no_data_points(self, mock_connect: MagicMock) -> None:

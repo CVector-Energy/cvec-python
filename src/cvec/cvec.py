@@ -151,7 +151,7 @@ class CVec:
         """
         Return all data-points within a given [start_at, end_at) interval,
         optionally selecting a given list of metric names.
-        The return value is a Pandas DataFrame with three columns: name, time, value.
+        The return value is a Pandas DataFrame with four columns: name, time, value_double, value_string.
         One row is returned for each tag value transition.
         """
         _start_at = start_at or self.default_start_at
@@ -182,19 +182,15 @@ class CVec:
                 rows = cur.fetchall()
 
         if not rows:
-            return pd.DataFrame(columns=["name", "time", "value"])
+            return pd.DataFrame(columns=["name", "time", "value_double", "value_string"])
 
         # Create DataFrame from fetched rows
         df = pd.DataFrame(
             rows, columns=["name", "time", "value_double", "value_string"]
         )
 
-        # Combine value_double and value_string into a single 'value' column
-        # NaNs in value_double (where it was NULL in DB) will be filled by values from value_string
-        df["value"] = df["value_double"].combine_first(df["value_string"])
-
         # Return the DataFrame with the required columns
-        return df[["name", "time", "value"]]
+        return df[["name", "time", "value_double", "value_string"]]
 
     def get_metrics(
         self, start_at: Optional[datetime] = None, end_at: Optional[datetime] = None
