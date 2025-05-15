@@ -229,11 +229,20 @@ class TestCVecGetMetrics:
 
         mock_cur.execute.assert_called_once()
         sql_query, params = mock_cur.execute.call_args.args
-        assert "SELECT DISTINCT tn.id, tn.normalized_name AS name, tn.birth_at, tn.death_at" in sql_query
+        assert (
+            "SELECT DISTINCT tn.id, tn.normalized_name AS name, tn.birth_at, tn.death_at"
+            in sql_query
+        )
         assert "FROM tag_names tn" in sql_query
-        assert "JOIN (" in sql_query # Check for join with transitions
-        assert "WHERE (transitions.time >= %(start_at_param)s OR %(start_at_param)s IS NULL)" in sql_query
-        assert "AND (transitions.time < %(end_at_param)s OR %(end_at_param)s IS NULL)" in sql_query
+        assert "JOIN (" in sql_query  # Check for join with transitions
+        assert (
+            "WHERE (transitions.time >= %(start_at_param)s OR %(start_at_param)s IS NULL)"
+            in sql_query
+        )
+        assert (
+            "AND (transitions.time < %(end_at_param)s OR %(end_at_param)s IS NULL)"
+            in sql_query
+        )
         assert params is not None
         assert params["start_at_param"] == start_query
         assert params["end_at_param"] == end_query
@@ -253,10 +262,12 @@ class TestCVecGetMetrics:
         mock_connect.return_value.__enter__.return_value = mock_conn
         mock_conn.cursor.return_value.__enter__.return_value = mock_cur
 
-        mock_cur.fetchall.return_value = [] # No rows returned
+        mock_cur.fetchall.return_value = []  # No rows returned
 
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        metrics = client.get_metrics(start_at=datetime(2024,1,1), end_at=datetime(2024,1,2))
+        metrics = client.get_metrics(
+            start_at=datetime(2024, 1, 1), end_at=datetime(2024, 1, 2)
+        )
 
         mock_cur.execute.assert_called_once()
         assert len(metrics) == 0
