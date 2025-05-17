@@ -1,35 +1,61 @@
 # CVec Client Library
 
-# Example Usage
+The "cvec" package is the Python SDK for CVector Energy.
 
-Install the cvec package:
+# Getting Started
+
+## Installation
+
+Assuming that you have a supported version of Python installed, you can first create a venv with:
+
+```
+python -m venv .venv
+```
+
+Then, activate the venv:
+
+```
+. .venv/bin/activate
+```
+
+Then, you can install cvec from PyPI with:
 
 ```
 pip install cvec
 ```
 
-Here is an example of using the package:
+## Using cvec
+
+Import the cvec package. We will also use the datetime module.
 
 ```
 import cvec
 from datetime import datetime
 ```
 
-Create the connection. The host, tenant, and api_key can be given through parameters to the constructor or from the environment variables CVEC_HOST, CVEC_TENANT, and CVEC_API_KEY:
+Construct the CVec client. The host, tenant, and api_key can be given through parameters to the constructor or from the environment variables CVEC_HOST, CVEC_TENANT, and CVEC_API_KEY:
 
 ```
 client = cvec.CVec()
 ```
 
-List the spans on a metric:
+### Spans
+
+A span is a period of interest, such as an experiment, a baseline recording session, or an alarm. The initial state of a Span is implicitly defined by a period where a given metric has a constant value.
+
+The newest span for a metric does not have an end time, since it has not ended yet (or has not ended by the finish of the queried period).
+
+To get the spans on `my_tag_name` since 2025-05-14 10am, run:
 
 ```
-for item in client.get_spans("my_tag_name", start_at=datetime(2025, 5, 14, 10, 0, 0)):
-  print(item)
+spans = client.get_spans("my_tag_name", start_at=datetime(2025, 5, 14, 10, 0, 0))
 ```
 
+### Metrics
 
+A metric is a named set of time-series data points pertaining to a particular resource (for example, the value reported by a sensor). A metric has a lifecycle of being activated or added to the system (birth_at) and later removed from the system (death_at). Metrics can have numeric or string values. Boolean values are mapped to 0 and 1.
 
+### Metric Data
 
 # CVec Class
 

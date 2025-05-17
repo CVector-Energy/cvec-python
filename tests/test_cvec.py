@@ -5,7 +5,7 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 from pandas.testing import assert_frame_equal
-from cvec import CVec, Span, Metric
+from cvec import CVec, Metric
 
 
 class TestCVecConstructor:
@@ -381,7 +381,6 @@ class TestCVecGetMetricData:
     @patch("cvec.cvec.psycopg.connect")
     def test_get_spans_with_limit_parameter(self, mock_connect: MagicMock) -> None:
         """Test get_spans when a limit parameter is provided."""
-        # Setup mock connection and cursor
         mock_conn = MagicMock()
         mock_cur = MagicMock()
         mock_connect.return_value.__enter__.return_value = mock_conn
@@ -390,11 +389,8 @@ class TestCVecGetMetricData:
         # Sample data (time, value_double, value_string) - newest first
         time1 = datetime(2023, 1, 1, 10, 0, 0)
         time2 = datetime(2023, 1, 1, 11, 0, 0)
-        time3 = datetime(2023, 1, 1, 12, 0, 0)
-        # Provide more rows than the limit to test truncation
         mock_db_rows = [
-            (time3, 30.0, None),  # Newest
-            (time2, None, "val2"),
+            (time2, None, "val2"),  # Newest
             (time1, 10.0, None),  # Oldest
         ]
         mock_cur.fetchall.return_value = mock_db_rows
@@ -410,6 +406,8 @@ class TestCVecGetMetricData:
         (_sql, params), _kwargs = mock_cur.execute.call_args
         assert params["metric"] == tag_name
         assert params["limit"] == query_limit
+
+        assert len(spans) == 2
 
     @patch("cvec.cvec.psycopg.connect")
     def test_get_spans_with_end_at_parameter(self, mock_connect: MagicMock) -> None:

@@ -42,11 +42,15 @@ jobs:
     - name: Install project
       run: poetry install --no-interaction
 
-    - name: Run linters
+    - name: Ruff lint check
       run: |
-        poetry run black --check .
+        poetry run ruff check .
 
-    - name: Run type checker
+    - name: Ruff format check
+      run: |
+        poetry run ruff format --check .
+
+    - name: Type check
       run: |
         poetry run mypy --strict .
     

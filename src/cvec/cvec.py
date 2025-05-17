@@ -206,7 +206,7 @@ class CVec:
 
         if start_at is None and end_at is None:
             # No time interval specified by arguments, return all tags
-            sql_query = f"""
+            sql_query = """
                 SELECT id, normalized_name AS name, birth_at, death_at
                 FROM tag_names
                 ORDER BY name ASC;
