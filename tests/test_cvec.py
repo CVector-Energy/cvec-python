@@ -298,7 +298,7 @@ class TestCVecGetMetricData:
         mock_cur.execute.assert_called_once()
         (_sql, params), _kwargs = mock_cur.execute.call_args
         assert params["tag_names_is_null"] is False
-        assert params["tag_names_list"] == tuple(names_to_query)
+        assert params["tag_names_list"] == names_to_query
         assert params["start_at"] is None  # Default start_at
         assert params["end_at"] is None  # Default end_at
 

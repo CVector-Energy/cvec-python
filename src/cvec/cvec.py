@@ -162,7 +162,7 @@ class CVec:
             # Pass an empty tuple if names is None or empty, otherwise the tuple of names.
             # ANY(%(empty_tuple)s) will correctly result in no matches if names is empty.
             # If names is None, the tag_names_is_null condition handles it.
-            "tag_names_list": tuple(names) if names else [],
+            "tag_names_list": names if names else [],
         }
 
         sql_query = """

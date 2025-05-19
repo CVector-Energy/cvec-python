@@ -36,7 +36,7 @@ from datetime import datetime
 Construct the CVec client. The host, tenant, and api_key can be given through parameters to the constructor or from the environment variables CVEC_HOST, CVEC_TENANT, and CVEC_API_KEY:
 
 ```
-client = cvec.CVec()
+cvec = cvec.CVec()
 ```
 
 ### Spans
@@ -48,7 +48,7 @@ The newest span for a metric does not have an end time, since it has not ended y
 To get the spans on `my_tag_name` since 2025-05-14 10am, run:
 
 ```
-for span in client.get_spans("mygroup/myedge/mode", start_at=datetime(2025, 5, 14, 10, 0, 0)):
+for span in cvec.get_spans("mygroup/myedge/mode", start_at=datetime(2025, 5, 14, 10, 0, 0)):
     print("%s\t%s" % (span.value, span.raw_start_at))
 ```
 
@@ -69,7 +69,7 @@ A metric is a named set of time-series data points pertaining to a particular re
 To get all of the metrics that changed value at 10am on 2025-05-14, run:
 
 ```
-for item in client.get_metrics(start_at=datetime(2025, 5, 14, 10, 0, 0), end_at=datetime(2025, 5, 14, 11, 0, 0)):
+for item in cvec.get_metrics(start_at=datetime(2025, 5, 14, 10, 0, 0), end_at=datetime(2025, 5, 14, 11, 0, 0)):
   print(item.name)
 ```
 
@@ -93,7 +93,7 @@ The main content for a metric is a set of points where the metric value changed.
 To get all of the value changes for all metrics at 10am on 2025-05-14, run:
 
 ```
-client.get_metric_data(start_at=datetime(2025, 5, 14, 10, 0, 0), end_at=datetime(2025, 5, 14, 11, 0, 0))
+cvec.get_metric_data(start_at=datetime(2025, 5, 14, 10, 0, 0), end_at=datetime(2025, 5, 14, 11, 0, 0))
 ```
 
 Example output:
