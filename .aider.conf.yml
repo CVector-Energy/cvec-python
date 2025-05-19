@@ -1,0 +1,7 @@
+lint-cmd: 
+  - "python: scripts/lint.sh"
+auto-lint: true
+test-cmd: poetry run pytest
+auto-test: true
+read:
+  - README.md
