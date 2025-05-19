@@ -32,8 +32,7 @@ class CVec:
         Setup the SDK with the given host and API Key.
         The host and API key are loaded from environment variables CVEC_HOST,
         CVEC_TENANT, CVEC_API_KEY, if they are not given as arguments to the constructor.
-        The default_start_at and default_end_at constrain most API keys, and can be overridden
-        by the start_at and end_at arguments to each API function.
+        The default_start_at and default_end_at can provide a default query time interval for API methods.
         """
         self.host = host or os.environ.get("CVEC_HOST")
         self.tenant = tenant or os.environ.get("CVEC_TENANT")
@@ -82,7 +81,7 @@ class CVec:
         - `raw_start_at`: The timestamp of the value change that initiated this span's value.
           This will be >= `_start_at` if `_start_at` was specified.
         - `raw_end_at`: The timestamp marking the end of this span's constant value.
-          For the newest span, the value is `None`. For other spans, it's the raw_start_at of the immediately preceding span in the returned list (which, being sorted newest-first, is the next chronologically newer span). This timestamp marks the end of the current span's constant value.
+          For the newest span, the value is `None`. For other spans, it's the raw_start_at of the immediately newer data point, which is next span in the list.
         - `id`: Currently `None`.
         - `metadata`: Currently `None`.
 
@@ -151,7 +150,7 @@ class CVec:
         Return all data-points within a given [start_at, end_at) interval,
         optionally selecting a given list of metric names.
         The return value is a Pandas DataFrame with four columns: name, time, value_double, value_string.
-        One row is returned for each tag value transition.
+        One row is returned for each metric value transition.
         """
         _start_at = start_at or self.default_start_at
         _end_at = end_at or self.default_end_at
@@ -199,7 +198,6 @@ class CVec:
         """
         Return a list of metrics that had at least one transition in the given [start_at, end_at) interval.
         All metrics are returned if no start_at and end_at are given.
-        Each metric has {id, name, birth_at, death_at}.
         """
         sql_query: str
         params: Optional[dict[str, Any]]
