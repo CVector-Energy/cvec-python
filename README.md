@@ -53,15 +53,23 @@ spans = client.get_spans("my_tag_name", start_at=datetime(2025, 5, 14, 10, 0, 0)
 
 ### Metrics
 
-A metric is a named set of time-series data points pertaining to a particular resource (for example, the value reported by a sensor). Metrics can have numeric or string values. Boolean values are mapped to 0 and 1.
+A metric is a named set of time-series data points pertaining to a particular resource (for example, the value reported by a sensor). Metrics can have numeric or string values. Boolean values are mapped to 0 and 1. The get_metrics function returns a list of metric metadata.
 
-Each `Metric` object, as returned by `get_metrics`, has the following attributes:
-- `id`: The unique integer identifier for the metric.
-- `name`: The string name of the metric.
-- `birth_at`: A `datetime` object indicating when the metric was first activated or added to the system. This can be `None` if the birth time is unknown.
-- `death_at`: A `datetime` object indicating when the metric was removed or deactivated from the system. This is `None` if the metric is still active or its death time is unknown.
+To get all of the metrics that changed value at 10am on 2025-05-14, run:
+
+```
+client.get_metrics(start_at=datetime(2025, 5, 14, 10, 0, 0), end_at=datetime(2025, 5, 14, 11, 0, 0))
+```
 
 ### Metric Data
+
+The main content for a metric is a set of points where the metric value changed. These are returned as a Pandas Dataframe with columns for name, time, value_double, value_string.
+
+To get all of the value changes for all metrics at 10am on 2025-05-14, run:
+
+```
+client.get_metric_data(start_at=datetime(2025, 5, 14, 10, 0, 0), end_at=datetime(2025, 5, 14, 11, 0, 0))
+```
 
 # CVec Class
 
