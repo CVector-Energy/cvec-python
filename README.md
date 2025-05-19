@@ -53,7 +53,13 @@ spans = client.get_spans("my_tag_name", start_at=datetime(2025, 5, 14, 10, 0, 0)
 
 ### Metrics
 
-A metric is a named set of time-series data points pertaining to a particular resource (for example, the value reported by a sensor). A metric has a lifecycle of being activated or added to the system (birth_at) and later removed from the system (death_at). Metrics can have numeric or string values. Boolean values are mapped to 0 and 1.
+A metric is a named set of time-series data points pertaining to a particular resource (for example, the value reported by a sensor). Metrics can have numeric or string values. Boolean values are mapped to 0 and 1.
+
+Each `Metric` object, as returned by `get_metrics`, has the following attributes:
+- `id`: The unique integer identifier for the metric.
+- `name`: The string name of the metric.
+- `birth_at`: A `datetime` object indicating when the metric was first activated or added to the system. This can be `None` if the birth time is unknown.
+- `death_at`: A `datetime` object indicating when the metric was removed or deactivated from the system. This is `None` if the metric is still active or its death time is unknown.
 
 ### Metric Data
 
