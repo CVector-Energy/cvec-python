@@ -1,9 +1,9 @@
 [project]
 name = "cvec"
 version = "0.1.0"
-description = ""
+description = "SDK for CVector Energy"
 authors = [
-    {name = "Joshua Napoli",email = "jnapoli@cvector.energy"}
+    {name = "CVector",email = "support@cvector.energy"}
 ]
 readme = "README.md"
 requires-python = ">=3.10"
