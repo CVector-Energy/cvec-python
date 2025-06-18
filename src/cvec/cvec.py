@@ -1,12 +1,14 @@
 import os
 from datetime import datetime
 from typing import Any, List, Optional
+from urllib.parse import urljoin
 
 import pandas as pd
-import psycopg
+import requests
 
-from .span import Span
-from .metric import Metric
+from cvec.models.metric import Metric, MetricDataPoint
+from cvec.models.span import Span
+from cvec.utils.arrow_converter import arrow_to_metric_data_points, metric_data_points_to_arrow, arrow_to_dataframe
 
 
 class CVec:
@@ -53,14 +55,37 @@ class CVec:
                 "CVEC_API_KEY must be set either as an argument or environment variable"
             )
 
-    def _get_db_connection(self) -> psycopg.Connection:
-        """Helper method to establish a database connection."""
-        return psycopg.connect(
-            user=self.tenant,
-            password=self.api_key,
-            host=self.host,
-            dbname=self.tenant,
+    def _get_headers(self) -> dict[str, str]:
+        """Helper method to get request headers."""
+        return {
+            "Authorization": f"Bearer {self.api_key}",
+            "X-Tenant": self.tenant,
+            "Content-Type": "application/json",
+        }
+
+    def _make_request(
+        self, method: str, endpoint: str, params: Optional[dict] = None, json: Optional[dict] = None, 
+        data: Optional[bytes] = None, headers: Optional[dict] = None
+    ) -> Any:
+        """Helper method to make HTTP requests."""
+        url = urljoin(self.host, endpoint)
+        request_headers = self._get_headers()
+        if headers:
+            request_headers.update(headers)
+            
+        response = requests.request(
+            method=method,
+            url=url,
+            headers=request_headers,
+            params=params,
+            json=json,
+            data=data,
         )
+        response.raise_for_status()
+        
+        if response.headers.get('content-type') == 'application/vnd.apache.arrow.stream':
+            return response.content
+        return response.json()
 
     def get_spans(
         self,
@@ -93,102 +118,91 @@ class CVec:
         _start_at = start_at or self.default_start_at
         _end_at = end_at or self.default_end_at
 
-        with self._get_db_connection() as conn:
-            with conn.cursor() as cur:
-                query_params = {
-                    "metric": name,
-                    "start_at": _start_at,
-                    "end_at": _end_at,
-                    # Fetch up to 'limit' points. If limit is None, then the `LIMIT NULL` clause
-                    # has no effect (in PostgreSQL).
-                    "limit": limit,
-                }
+        params = {
+            "start_at": _start_at.isoformat() if _start_at else None,
+            "end_at": _end_at.isoformat() if _end_at else None,
+            "limit": limit,
+        }
 
-                combined_query = """
-                SELECT
-                    time,
-                    value_double,
-                    value_string
-                FROM metric_data
-                WHERE metric = %(metric)s
-                  AND (time >= %(start_at)s OR %(start_at)s IS NULL)
-                  AND (time < %(end_at)s OR %(end_at)s IS NULL)
-                ORDER BY time DESC
-                LIMIT %(limit)s
-                """
-                cur.execute(combined_query, query_params)
-                db_rows = cur.fetchall()
-                spans = []
-
-                # None indicates that the end time is not known; the span extends beyond
-                # the query period.
-                raw_end_at = None
-                for time, value_double, value_string in db_rows:
-                    raw_start_at = time
-                    value = value_double if value_double is not None else value_string
-                    spans.append(
-                        Span(
-                            id=None,
-                            name=name,
-                            value=value,
-                            raw_start_at=raw_start_at,
-                            raw_end_at=raw_end_at,
-                            metadata=None,
-                        )
-                    )
-                    raw_end_at = raw_start_at
-
-                return spans
+        response_data = self._make_request("GET", f"/api/metrics/spans/{name}", params=params)
+        return [Span.model_validate(span_data) for span_data in response_data]
 
     def get_metric_data(
         self,
         names: Optional[List[str]] = None,
         start_at: Optional[datetime] = None,
         end_at: Optional[datetime] = None,
+        use_arrow: bool = False,
+    ) -> List[MetricDataPoint]:
+        """
+        Return all data-points within a given [start_at, end_at) interval,
+        optionally selecting a given list of metric names.
+        Returns a list of MetricDataPoint objects, one for each metric value transition.
+        
+        Args:
+            names: Optional list of metric names to filter by
+            start_at: Optional start time for the query
+            end_at: Optional end time for the query
+            use_arrow: If True, uses Arrow format for data transfer (more efficient for large datasets)
+        """
+        _start_at = start_at or self.default_start_at
+        _end_at = end_at or self.default_end_at
+
+        params = {
+            "start_at": _start_at.isoformat() if _start_at else None,
+            "end_at": _end_at.isoformat() if _end_at else None,
+            "names": ",".join(names) if names else None,
+        }
+
+        endpoint = "/api/metrics/data/arrow" if use_arrow else "/api/metrics/data"
+        response_data = self._make_request("GET", endpoint, params=params)
+        
+        if use_arrow:
+            return arrow_to_metric_data_points(response_data)
+        return [MetricDataPoint.model_validate(point_data) for point_data in response_data]
+
+    def get_metric_dataframe(
+        self,
+        names: Optional[List[str]] = None,
+        start_at: Optional[datetime] = None,
+        end_at: Optional[datetime] = None,
+        use_arrow: bool = False,
     ) -> pd.DataFrame:
         """
         Return all data-points within a given [start_at, end_at) interval,
         optionally selecting a given list of metric names.
         The return value is a Pandas DataFrame with four columns: name, time, value_double, value_string.
         One row is returned for each metric value transition.
+        
+        Args:
+            names: Optional list of metric names to filter by
+            start_at: Optional start time for the query
+            end_at: Optional end time for the query
+            use_arrow: If True, uses Arrow format for data transfer (more efficient for large datasets)
         """
         _start_at = start_at or self.default_start_at
         _end_at = end_at or self.default_end_at
 
         params = {
-            "start_at": _start_at,
-            "end_at": _end_at,
-            "tag_names_is_null": names is None,
-            # Pass an empty tuple if names is None or empty, otherwise the tuple of names.
-            # ANY(%(empty_tuple)s) will correctly result in no matches if names is empty.
-            # If names is None, the tag_names_is_null condition handles it.
-            "tag_names_list": names if names else [],
+            "start_at": _start_at.isoformat() if _start_at else None,
+            "end_at": _end_at.isoformat() if _end_at else None,
+            "names": ",".join(names) if names else None,
         }
 
-        sql_query = """
-            SELECT metric AS name, time, value_double, value_string
-            FROM metric_data
-            WHERE (time >= %(start_at)s OR %(start_at)s IS NULL)
-              AND (time < %(end_at)s OR %(end_at)s IS NULL)
-              AND (%(tag_names_is_null)s IS TRUE OR metric = ANY(%(tag_names_list)s))
-            ORDER BY name, time ASC
-        """
-
-        with self._get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql_query, params)
-                rows = cur.fetchall()
-
-        if not rows:
+        endpoint = "/api/metrics/data/arrow" if use_arrow else "/api/metrics/data"
+        response_data = self._make_request("GET", endpoint, params=params)
+        
+        if not response_data:
             return pd.DataFrame(
                 columns=["name", "time", "value_double", "value_string"]
             )
+        
+        if use_arrow:
+            return arrow_to_dataframe(response_data)
 
-        # Create DataFrame from fetched rows
-        df = pd.DataFrame(
-            rows, columns=["name", "time", "value_double", "value_string"]
-        )
-
+        # Create DataFrame from response data
+        df = pd.DataFrame(response_data)
+        
         # Return the DataFrame with the required columns
         return df[["name", "time", "value_double", "value_string"]]
 
@@ -199,44 +213,40 @@ class CVec:
         Return a list of metrics that had at least one transition in the given [start_at, end_at) interval.
         All metrics are returned if no start_at and end_at are given.
         """
-        sql_query: str
-        params: Optional[dict[str, Any]]
+        _start_at = start_at or self.default_start_at
+        _end_at = end_at or self.default_end_at
 
-        if start_at is None and end_at is None:
-            # No time interval specified by arguments, return all tags
-            sql_query = """
-                SELECT id, normalized_name AS name, birth_at, death_at
-                FROM tag_names
-                ORDER BY name ASC;
-            """
-            params = None
-        else:
-            # Time interval specified, find tags with transitions in the interval
-            _start_at = start_at or self.default_start_at
-            _end_at = end_at or self.default_end_at
+        params = {
+            "start_at": _start_at.isoformat() if _start_at else None,
+            "end_at": _end_at.isoformat() if _end_at else None,
+        }
 
-            params = {"start_at_param": _start_at, "end_at_param": _end_at}
-            sql_query = f"""
-                SELECT DISTINCT metric_id AS id, metric AS name, birth_at, death_at
-                FROM {self.tenant}.metric_data
-                WHERE (time >= %(start_at_param)s OR %(start_at_param)s IS NULL)
-                  AND (time < %(end_at_param)s OR %(end_at_param)s IS NULL)
-                ORDER BY name ASC;
-            """
+        response_data = self._make_request("GET", "/api/metrics", params=params)
+        return [Metric.model_validate(metric_data) for metric_data in response_data]
 
-        with self._get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql_query, params)
-                rows = cur.fetchall()
-
-        # Format rows into list of Metric objects
-        metrics_list = [
-            Metric(
-                id=row[0],
-                name=row[1],
-                birth_at=row[2],
-                death_at=row[3],
+    def add_metric_data(
+        self, 
+        data_points: List[MetricDataPoint],
+        use_arrow: bool = False,
+    ) -> None:
+        """
+        Add multiple metric data points to the database.
+        
+        Args:
+            data_points: List of MetricDataPoint objects to add
+            use_arrow: If True, uses Arrow format for data transfer (more efficient for large datasets)
+        """
+        endpoint = "/api/metrics/data/arrow" if use_arrow else "/api/metrics/data"
+        
+        if use_arrow:
+            arrow_data = metric_data_points_to_arrow(data_points)
+            self._make_request(
+                "POST", 
+                endpoint, 
+                data=arrow_data,
+                headers={"Content-Type": "application/vnd.apache.arrow.stream"}
             )
-            for row in rows
-        ]
-        return metrics_list
+        else:
+            data_dicts = [point.model_dump(mode='json') for point in data_points]
+            print(data_dicts)
+            self._make_request("POST", endpoint, json=data_dicts)
