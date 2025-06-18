@@ -248,5 +248,4 @@ class CVec:
             )
         else:
             data_dicts = [point.model_dump(mode='json') for point in data_points]
-            print(data_dicts)
             self._make_request("POST", endpoint, json=data_dicts)
