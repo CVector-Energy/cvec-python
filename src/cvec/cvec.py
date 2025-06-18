@@ -3,12 +3,11 @@ from datetime import datetime
 from typing import Any, List, Optional
 from urllib.parse import urljoin
 
-import pandas as pd
 import requests
 
 from cvec.models.metric import Metric, MetricDataPoint
 from cvec.models.span import Span
-from cvec.utils.arrow_converter import arrow_to_metric_data_points, metric_data_points_to_arrow, arrow_to_dataframe
+from cvec.utils.arrow_converter import arrow_to_metric_data_points, metric_data_points_to_arrow
 
 
 class CVec:
@@ -161,24 +160,21 @@ class CVec:
             return arrow_to_metric_data_points(response_data)
         return [MetricDataPoint.model_validate(point_data) for point_data in response_data]
 
-    def get_metric_dataframe(
+    def get_metric_arrow(
         self,
         names: Optional[List[str]] = None,
         start_at: Optional[datetime] = None,
         end_at: Optional[datetime] = None,
-        use_arrow: bool = False,
-    ) -> pd.DataFrame:
+    ) -> bytes:
         """
         Return all data-points within a given [start_at, end_at) interval,
         optionally selecting a given list of metric names.
-        The return value is a Pandas DataFrame with four columns: name, time, value_double, value_string.
-        One row is returned for each metric value transition.
+        Returns Arrow IPC format data that can be read using pyarrow.ipc.open_file.
         
         Args:
             names: Optional list of metric names to filter by
             start_at: Optional start time for the query
             end_at: Optional end time for the query
-            use_arrow: If True, uses Arrow format for data transfer (more efficient for large datasets)
         """
         _start_at = start_at or self.default_start_at
         _end_at = end_at or self.default_end_at
@@ -189,22 +185,8 @@ class CVec:
             "names": ",".join(names) if names else None,
         }
 
-        endpoint = "/api/metrics/data/arrow" if use_arrow else "/api/metrics/data"
-        response_data = self._make_request("GET", endpoint, params=params)
-        
-        if not response_data:
-            return pd.DataFrame(
-                columns=["name", "time", "value_double", "value_string"]
-            )
-        
-        if use_arrow:
-            return arrow_to_dataframe(response_data)
-
-        # Create DataFrame from response data
-        df = pd.DataFrame(response_data)
-        
-        # Return the DataFrame with the required columns
-        return df[["name", "time", "value_double", "value_string"]]
+        endpoint = "/api/metrics/data/arrow"
+        return self._make_request("GET", endpoint, params=params)
 
     def get_metrics(
         self, start_at: Optional[datetime] = None, end_at: Optional[datetime] = None

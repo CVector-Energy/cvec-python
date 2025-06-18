@@ -3,7 +3,6 @@ from typing import List
 
 import pyarrow as pa
 import pyarrow.ipc as ipc
-import pandas as pd
 
 from cvec.models.metric import MetricDataPoint
 
@@ -68,22 +67,4 @@ def arrow_to_metric_data_points(arrow_data: bytes) -> List[MetricDataPoint]:
             value_double=table['value_double'][i].as_py(),
             value_string=table['value_string'][i].as_py()
         ))
-    return data_points
-
-
-def arrow_to_dataframe(arrow_data: bytes) -> pd.DataFrame:
-    """
-    Convert Arrow format directly to a pandas DataFrame.
-    
-    Args:
-        arrow_data: Arrow IPC format data
-        
-    Returns:
-        pd.DataFrame: DataFrame with columns [name, time, value_double, value_string]
-    """
-    # Read Arrow data
-    reader = ipc.open_file(io.BytesIO(arrow_data))
-    table = reader.read_all()
-    
-    # Convert directly to DataFrame
-    return table.to_pandas() 
+    return data_points 
