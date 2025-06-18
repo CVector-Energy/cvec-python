@@ -10,8 +10,7 @@ requires-python = ">=3.10"
 dependencies = [
     "requests (>=2.32.3,<3.0.0)",
     "pydantic>=2.7.0,<3.0.0",
-    "pyarrow>=15.0.0,<16.0.0",
-    "pandas>=2.2.0,<3.0.0"
+    "pyarrow>=15.0.0,<16.0.0"
 ]
 
 [tool.poetry]
@@ -21,7 +20,6 @@ packages = [{include = "cvec", from = "src"}]
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
 mypy = "^1.15.0"
-pandas-stubs = "^2.2.3.250308"
 ruff = "^0.11.10"
 
 [build-system]
