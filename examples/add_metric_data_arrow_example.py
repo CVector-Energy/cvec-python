@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import random
 
 
-def main():
+def main() -> None:
     cvec = CVec(
         host="https://cvec-backend-rzhang-cvec-sandbox.deployments.quix.io",
         tenant="test",

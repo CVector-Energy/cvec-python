@@ -1,9 +1,10 @@
 import os
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Dict
 from urllib.parse import urljoin
 
-import requests
+import requests  # type: ignore[import-untyped]
+import pyarrow as pa  # type: ignore[import-untyped]
 
 from cvec.models.metric import Metric, MetricDataPoint
 from cvec.models.span import Span
@@ -57,11 +58,11 @@ class CVec:
                 "CVEC_API_KEY must be set either as an argument or environment variable"
             )
 
-    def _get_headers(self) -> dict[str, str]:
+    def _get_headers(self) -> Dict[str, str]:
         """Helper method to get request headers."""
         return {
             "Authorization": f"Bearer {self.api_key}",
-            "X-Tenant": self.tenant,
+            "X-Tenant": self.tenant or "",
             "Content-Type": "application/json",
         }
 
@@ -69,13 +70,13 @@ class CVec:
         self,
         method: str,
         endpoint: str,
-        params: Optional[dict] = None,
-        json: Optional[dict] = None,
+        params: Optional[Dict[str, Any]] = None,
+        json: Optional[Dict[str, Any]] = None,
         data: Optional[bytes] = None,
-        headers: Optional[dict] = None,
+        headers: Optional[Dict[str, str]] = None,
     ) -> Any:
         """Helper method to make HTTP requests."""
-        url = urljoin(self.host, endpoint)
+        url = urljoin(self.host or "", endpoint)
         request_headers = self._get_headers()
         if headers:
             request_headers.update(headers)
@@ -128,7 +129,7 @@ class CVec:
         _start_at = start_at or self.default_start_at
         _end_at = end_at or self.default_end_at
 
-        params = {
+        params: Dict[str, Any] = {
             "start_at": _start_at.isoformat() if _start_at else None,
             "end_at": _end_at.isoformat() if _end_at else None,
             "limit": limit,
@@ -160,7 +161,7 @@ class CVec:
         _start_at = start_at or self.default_start_at
         _end_at = end_at or self.default_end_at
 
-        params = {
+        params: Dict[str, Any] = {
             "start_at": _start_at.isoformat() if _start_at else None,
             "end_at": _end_at.isoformat() if _end_at else None,
             "names": ",".join(names) if names else None,
@@ -194,14 +195,16 @@ class CVec:
         _start_at = start_at or self.default_start_at
         _end_at = end_at or self.default_end_at
 
-        params = {
+        params: Dict[str, Any] = {
             "start_at": _start_at.isoformat() if _start_at else None,
             "end_at": _end_at.isoformat() if _end_at else None,
             "names": ",".join(names) if names else None,
         }
 
         endpoint = "/api/metrics/data/arrow"
-        return self._make_request("GET", endpoint, params=params)
+        result = self._make_request("GET", endpoint, params=params)
+        assert isinstance(result, bytes)
+        return result
 
     def get_metrics(
         self, start_at: Optional[datetime] = None, end_at: Optional[datetime] = None
@@ -213,7 +216,7 @@ class CVec:
         _start_at = start_at or self.default_start_at
         _end_at = end_at or self.default_end_at
 
-        params = {
+        params: Dict[str, Any] = {
             "start_at": _start_at.isoformat() if _start_at else None,
             "end_at": _end_at.isoformat() if _end_at else None,
         }
@@ -244,5 +247,5 @@ class CVec:
                 headers={"Content-Type": "application/vnd.apache.arrow.stream"},
             )
         else:
-            data_dicts = [point.model_dump(mode="json") for point in data_points]
-            self._make_request("POST", endpoint, json=data_dicts)
+            data_dicts: List[Dict[str, Any]] = [point.model_dump(mode='json') for point in data_points]
+            self._make_request("POST", endpoint, json=data_dicts)  # type: ignore[arg-type]

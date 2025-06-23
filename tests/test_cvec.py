@@ -4,8 +4,8 @@ from unittest.mock import patch
 from datetime import datetime
 from cvec import CVec
 from cvec.models.metric import Metric
-import pyarrow as pa
-import pyarrow.ipc as ipc
+import pyarrow as pa  # type: ignore[import-untyped]
+import pyarrow.ipc as ipc  # type: ignore[import-untyped]
 import io
 
 
@@ -116,7 +116,7 @@ class TestCVecConstructor:
 
 
 class TestCVecGetSpans:
-    def test_get_spans_basic_case(self):
+    def test_get_spans_basic_case(self) -> None:
         # Simulate backend response
         response_data = [
             {
@@ -139,7 +139,7 @@ class TestCVecGetSpans:
             },
         ]
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        client._make_request = lambda *args, **kwargs: response_data
+        client._make_request = lambda *args, **kwargs: response_data  # type: ignore[method-assign]
         spans = client.get_spans(name="test_tag")
         assert len(spans) == 3
         assert spans[0].name == "test_tag"
@@ -151,7 +151,7 @@ class TestCVecGetSpans:
 
 
 class TestCVecGetMetrics:
-    def test_get_metrics_no_interval(self):
+    def test_get_metrics_no_interval(self) -> None:
         response_data = [
             {
                 "id": 1,
@@ -167,7 +167,7 @@ class TestCVecGetMetrics:
             },
         ]
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        client._make_request = lambda *args, **kwargs: response_data
+        client._make_request = lambda *args, **kwargs: response_data  # type: ignore[method-assign]
         metrics = client.get_metrics()
         assert len(metrics) == 2
         assert isinstance(metrics[0], Metric)
@@ -176,7 +176,7 @@ class TestCVecGetMetrics:
         assert metrics[1].id == 2
         assert metrics[1].name == "metric2"
 
-    def test_get_metrics_with_interval(self):
+    def test_get_metrics_with_interval(self) -> None:
         response_data = [
             {
                 "id": 1,
@@ -186,7 +186,7 @@ class TestCVecGetMetrics:
             },
         ]
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        client._make_request = lambda *args, **kwargs: response_data
+        client._make_request = lambda *args, **kwargs: response_data  # type: ignore[method-assign]
         metrics = client.get_metrics(
             start_at=datetime(2023, 1, 5, 0, 0, 0),
             end_at=datetime(2023, 1, 15, 0, 0, 0),
@@ -194,9 +194,9 @@ class TestCVecGetMetrics:
         assert len(metrics) == 1
         assert metrics[0].name == "metric_in_interval"
 
-    def test_get_metrics_no_data_found(self):
+    def test_get_metrics_no_data_found(self) -> None:
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        client._make_request = lambda *args, **kwargs: []
+        client._make_request = lambda *args, **kwargs: []  # type: ignore[method-assign]
         metrics = client.get_metrics(
             start_at=datetime(2024, 1, 1), end_at=datetime(2024, 1, 2)
         )
@@ -204,7 +204,7 @@ class TestCVecGetMetrics:
 
 
 class TestCVecGetMetricData:
-    def test_get_metric_data_basic_case(self):
+    def test_get_metric_data_basic_case(self) -> None:
         # Simulate backend response
         time1 = datetime(2023, 1, 1, 10, 0, 0)
         time2 = datetime(2023, 1, 1, 11, 0, 0)
@@ -220,7 +220,7 @@ class TestCVecGetMetricData:
             },
         ]
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        client._make_request = lambda *args, **kwargs: response_data
+        client._make_request = lambda *args, **kwargs: response_data  # type: ignore[method-assign]
         data_points = client.get_metric_data(names=["tag1", "tag2"])
         assert len(data_points) == 3
         assert data_points[0].name == "tag1"
@@ -232,13 +232,13 @@ class TestCVecGetMetricData:
         assert data_points[2].value_double is None
         assert data_points[2].value_string == "val_str"
 
-    def test_get_metric_data_no_data_points(self):
+    def test_get_metric_data_no_data_points(self) -> None:
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        client._make_request = lambda *args, **kwargs: []
+        client._make_request = lambda *args, **kwargs: []  # type: ignore[method-assign]
         data_points = client.get_metric_data(names=["non_existent_tag"])
         assert data_points == []
 
-    def test_get_metric_arrow_basic_case(self):
+    def test_get_metric_arrow_basic_case(self) -> None:
         # Prepare Arrow table
         names = ["tag1", "tag1", "tag2"]
         times = [
@@ -261,7 +261,7 @@ class TestCVecGetMetricData:
             writer.write_table(table)
         arrow_bytes = sink.getvalue().to_pybytes()
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        client._make_request = lambda *args, **kwargs: arrow_bytes
+        client._make_request = lambda *args, **kwargs: arrow_bytes  # type: ignore[method-assign]
         result = client.get_metric_arrow(names=["tag1", "tag2"])
         reader = ipc.open_file(io.BytesIO(result))
         result_table = reader.read_all()
@@ -274,7 +274,7 @@ class TestCVecGetMetricData:
             "val_str",
         ]
 
-    def test_get_metric_arrow_empty(self):
+    def test_get_metric_arrow_empty(self) -> None:
         table = pa.table(
             {
                 "name": pa.array([], type=pa.string()),
@@ -288,7 +288,7 @@ class TestCVecGetMetricData:
             writer.write_table(table)
         arrow_bytes = sink.getvalue().to_pybytes()
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        client._make_request = lambda *args, **kwargs: arrow_bytes
+        client._make_request = lambda *args, **kwargs: arrow_bytes  # type: ignore[method-assign]
         result = client.get_metric_arrow(names=["non_existent_tag"])
         reader = ipc.open_file(io.BytesIO(result))
         result_table = reader.read_all()

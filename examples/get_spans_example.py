@@ -1,7 +1,7 @@
 from cvec import CVec
 
 
-def main():
+def main() -> None:
     cvec = CVec(
         host="https://cvec-backend-rzhang-cvec-sandbox.deployments.quix.io",
         tenant="test",
@@ -9,7 +9,7 @@ def main():
     )
     metrics = cvec.get_metrics()
     if metrics:
-        metric_name = "python-sdk/test"
+        metric_name = metrics[0].name
         print(f"\nGetting spans for metric '{metric_name}'...")
         spans = cvec.get_spans(metric_name, limit=5)
         print(f"Found {len(spans)} spans")

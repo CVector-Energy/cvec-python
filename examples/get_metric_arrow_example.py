@@ -1,9 +1,9 @@
 from cvec import CVec
 import io
-import pyarrow.ipc as ipc
+import pyarrow.ipc as ipc  # type: ignore[import-untyped]
 
 
-def main():
+def main() -> None:
     cvec = CVec(
         host="https://cvec-backend-rzhang-cvec-sandbox.deployments.quix.io",
         tenant="test",
