@@ -4,7 +4,6 @@ from typing import Any, List, Optional, Dict
 from urllib.parse import urljoin
 
 import requests  # type: ignore[import-untyped]
-import pyarrow as pa  # type: ignore[import-untyped]
 
 from cvec.models.metric import Metric, MetricDataPoint
 from cvec.models.span import Span
@@ -247,5 +246,7 @@ class CVec:
                 headers={"Content-Type": "application/vnd.apache.arrow.stream"},
             )
         else:
-            data_dicts: List[Dict[str, Any]] = [point.model_dump(mode='json') for point in data_points]
+            data_dicts: List[Dict[str, Any]] = [
+                point.model_dump(mode="json") for point in data_points
+            ]
             self._make_request("POST", endpoint, json=data_dicts)  # type: ignore[arg-type]
