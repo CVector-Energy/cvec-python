@@ -1,7 +1,7 @@
 from cvec import CVec
 
 
-def main():
+def main() -> None:
     cvec = CVec(
         host="https://cvec-backend-rzhang-cvec-sandbox.deployments.quix.io",
         tenant="test",

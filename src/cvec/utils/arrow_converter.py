@@ -1,8 +1,8 @@
 import io
 from typing import List
 
-import pyarrow as pa
-import pyarrow.ipc as ipc
+import pyarrow as pa  # type: ignore[import-untyped]
+import pyarrow.ipc as ipc  # type: ignore[import-untyped]
 
 from cvec.models.metric import MetricDataPoint
 
@@ -43,7 +43,7 @@ def metric_data_points_to_arrow(data_points: List[MetricDataPoint]) -> bytes:
     sink = pa.BufferOutputStream()
     with ipc.new_file(sink, table.schema) as writer:
         writer.write_table(table)
-    return sink.getvalue().to_pybytes()
+    return bytes(sink.getvalue().to_pybytes())
 
 
 def arrow_to_metric_data_points(arrow_data: bytes) -> List[MetricDataPoint]:
@@ -61,7 +61,7 @@ def arrow_to_metric_data_points(arrow_data: bytes) -> List[MetricDataPoint]:
     table = reader.read_all()
 
     # Convert to list of MetricDataPoint
-    data_points = []
+    data_points: List[MetricDataPoint] = []
     for i in range(len(table)):
         data_points.append(
             MetricDataPoint(
