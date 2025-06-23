@@ -1,5 +1,6 @@
 from cvec import CVec
 
+
 def main():
     cvec = CVec(
         host="https://cvec-backend-rzhang-cvec-sandbox.deployments.quix.io",  # Replace with your API host
@@ -12,5 +13,6 @@ def main():
     for metric in metrics:
         print(f"- {metric.name}")
 
+
 if __name__ == "__main__":
-    main() 
+    main()

@@ -119,9 +119,24 @@ class TestCVecGetSpans:
     def test_get_spans_basic_case(self):
         # Simulate backend response
         response_data = [
-            {"name": "test_tag", "value": 30.0, "raw_start_at": datetime(2023, 1, 1, 12, 0, 0), "raw_end_at": None},
-            {"name": "test_tag", "value": "val2", "raw_start_at": datetime(2023, 1, 1, 11, 0, 0), "raw_end_at": datetime(2023, 1, 1, 12, 0, 0)},
-            {"name": "test_tag", "value": 10.0, "raw_start_at": datetime(2023, 1, 1, 10, 0, 0), "raw_end_at": datetime(2023, 1, 1, 11, 0, 0)},
+            {
+                "name": "test_tag",
+                "value": 30.0,
+                "raw_start_at": datetime(2023, 1, 1, 12, 0, 0),
+                "raw_end_at": None,
+            },
+            {
+                "name": "test_tag",
+                "value": "val2",
+                "raw_start_at": datetime(2023, 1, 1, 11, 0, 0),
+                "raw_end_at": datetime(2023, 1, 1, 12, 0, 0),
+            },
+            {
+                "name": "test_tag",
+                "value": 10.0,
+                "raw_start_at": datetime(2023, 1, 1, 10, 0, 0),
+                "raw_end_at": datetime(2023, 1, 1, 11, 0, 0),
+            },
         ]
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
         client._make_request = lambda *args, **kwargs: response_data
@@ -138,8 +153,18 @@ class TestCVecGetSpans:
 class TestCVecGetMetrics:
     def test_get_metrics_no_interval(self):
         response_data = [
-            {"id": 1, "name": "metric1", "birth_at": datetime(2023, 1, 1, 0, 0, 0), "death_at": datetime(2023, 1, 10, 0, 0, 0)},
-            {"id": 2, "name": "metric2", "birth_at": datetime(2023, 2, 1, 0, 0, 0), "death_at": None},
+            {
+                "id": 1,
+                "name": "metric1",
+                "birth_at": datetime(2023, 1, 1, 0, 0, 0),
+                "death_at": datetime(2023, 1, 10, 0, 0, 0),
+            },
+            {
+                "id": 2,
+                "name": "metric2",
+                "birth_at": datetime(2023, 2, 1, 0, 0, 0),
+                "death_at": None,
+            },
         ]
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
         client._make_request = lambda *args, **kwargs: response_data
@@ -153,18 +178,28 @@ class TestCVecGetMetrics:
 
     def test_get_metrics_with_interval(self):
         response_data = [
-            {"id": 1, "name": "metric_in_interval", "birth_at": datetime(2023, 1, 1, 0, 0, 0), "death_at": None},
+            {
+                "id": 1,
+                "name": "metric_in_interval",
+                "birth_at": datetime(2023, 1, 1, 0, 0, 0),
+                "death_at": None,
+            },
         ]
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
         client._make_request = lambda *args, **kwargs: response_data
-        metrics = client.get_metrics(start_at=datetime(2023, 1, 5, 0, 0, 0), end_at=datetime(2023, 1, 15, 0, 0, 0))
+        metrics = client.get_metrics(
+            start_at=datetime(2023, 1, 5, 0, 0, 0),
+            end_at=datetime(2023, 1, 15, 0, 0, 0),
+        )
         assert len(metrics) == 1
         assert metrics[0].name == "metric_in_interval"
 
     def test_get_metrics_no_data_found(self):
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
         client._make_request = lambda *args, **kwargs: []
-        metrics = client.get_metrics(start_at=datetime(2024, 1, 1), end_at=datetime(2024, 1, 2))
+        metrics = client.get_metrics(
+            start_at=datetime(2024, 1, 1), end_at=datetime(2024, 1, 2)
+        )
         assert len(metrics) == 0
 
 
@@ -177,7 +212,12 @@ class TestCVecGetMetricData:
         response_data = [
             {"name": "tag1", "time": time1, "value_double": 10.0, "value_string": None},
             {"name": "tag1", "time": time2, "value_double": 20.0, "value_string": None},
-            {"name": "tag2", "time": time3, "value_double": None, "value_string": "val_str"},
+            {
+                "name": "tag2",
+                "time": time3,
+                "value_double": None,
+                "value_string": "val_str",
+            },
         ]
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
         client._make_request = lambda *args, **kwargs: response_data
@@ -201,15 +241,21 @@ class TestCVecGetMetricData:
     def test_get_metric_arrow_basic_case(self):
         # Prepare Arrow table
         names = ["tag1", "tag1", "tag2"]
-        times = [datetime(2023, 1, 1, 10, 0, 0), datetime(2023, 1, 1, 11, 0, 0), datetime(2023, 1, 1, 12, 0, 0)]
+        times = [
+            datetime(2023, 1, 1, 10, 0, 0),
+            datetime(2023, 1, 1, 11, 0, 0),
+            datetime(2023, 1, 1, 12, 0, 0),
+        ]
         value_doubles = [10.0, 20.0, None]
         value_strings = [None, None, "val_str"]
-        table = pa.table({
-            "name": pa.array(names),
-            "time": pa.array(times, type=pa.timestamp('us', tz=None)),
-            "value_double": pa.array(value_doubles, type=pa.float64()),
-            "value_string": pa.array(value_strings, type=pa.string()),
-        })
+        table = pa.table(
+            {
+                "name": pa.array(names),
+                "time": pa.array(times, type=pa.timestamp("us", tz=None)),
+                "value_double": pa.array(value_doubles, type=pa.float64()),
+                "value_string": pa.array(value_strings, type=pa.string()),
+            }
+        )
         sink = pa.BufferOutputStream()
         with ipc.new_file(sink, table.schema) as writer:
             writer.write_table(table)
@@ -222,15 +268,21 @@ class TestCVecGetMetricData:
         assert result_table.num_rows == 3
         assert result_table.column("name").to_pylist() == names
         assert result_table.column("value_double").to_pylist() == [10.0, 20.0, None]
-        assert result_table.column("value_string").to_pylist() == [None, None, "val_str"]
+        assert result_table.column("value_string").to_pylist() == [
+            None,
+            None,
+            "val_str",
+        ]
 
     def test_get_metric_arrow_empty(self):
-        table = pa.table({
-            "name": pa.array([], type=pa.string()),
-            "time": pa.array([], type=pa.timestamp('us', tz=None)),
-            "value_double": pa.array([], type=pa.float64()),
-            "value_string": pa.array([], type=pa.string()),
-        })
+        table = pa.table(
+            {
+                "name": pa.array([], type=pa.string()),
+                "time": pa.array([], type=pa.timestamp("us", tz=None)),
+                "value_double": pa.array([], type=pa.float64()),
+                "value_string": pa.array([], type=pa.string()),
+            }
+        )
         sink = pa.BufferOutputStream()
         with ipc.new_file(sink, table.schema) as writer:
             writer.write_table(table)
