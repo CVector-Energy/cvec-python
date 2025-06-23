@@ -1,5 +1,6 @@
 from cvec import CVec
 
+
 def main():
     cvec = CVec(
         host="https://cvec-backend-rzhang-cvec-sandbox.deployments.quix.io",
@@ -13,9 +14,12 @@ def main():
         spans = cvec.get_spans(metric_name, limit=5)
         print(f"Found {len(spans)} spans")
         for span in spans:
-            print(f"- Value: {span.value} from {span.raw_start_at} to {span.raw_end_at}")
+            print(
+                f"- Value: {span.value} from {span.raw_start_at} to {span.raw_end_at}"
+            )
     else:
         print("No metrics found to get spans.")
 
+
 if __name__ == "__main__":
-    main() 
+    main()

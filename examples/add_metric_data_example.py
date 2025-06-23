@@ -3,6 +3,7 @@ from cvec.models.metric import MetricDataPoint
 from datetime import datetime, timezone
 import random
 
+
 def main():
     cvec = CVec(
         host="https://cvec-backend-rzhang-cvec-sandbox.deployments.quix.io",
@@ -28,5 +29,6 @@ def main():
     cvec.add_metric_data(new_data, use_arrow=False)
     print("Data added successfully")
 
+
 if __name__ == "__main__":
-    main() 
+    main()

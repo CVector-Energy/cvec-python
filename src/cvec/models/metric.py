@@ -14,11 +14,7 @@ class MetricDataPoint(BaseModel):
     value_double: Optional[float] = None
     value_string: Optional[str] = None
 
-    model_config = ConfigDict(
-        json_encoders={
-            datetime: lambda dt: dt.isoformat()
-        }
-    )
+    model_config = ConfigDict(json_encoders={datetime: lambda dt: dt.isoformat()})
 
 
 class Metric(BaseModel):
@@ -31,8 +27,4 @@ class Metric(BaseModel):
     birth_at: Optional[datetime] = None
     death_at: Optional[datetime] = None
 
-    model_config = ConfigDict(
-        json_encoders={
-            datetime: lambda dt: dt.isoformat()
-        }
-    )
+    model_config = ConfigDict(json_encoders={datetime: lambda dt: dt.isoformat()})

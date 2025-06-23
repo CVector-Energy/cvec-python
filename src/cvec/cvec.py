@@ -7,7 +7,10 @@ import requests
 
 from cvec.models.metric import Metric, MetricDataPoint
 from cvec.models.span import Span
-from cvec.utils.arrow_converter import arrow_to_metric_data_points, metric_data_points_to_arrow
+from cvec.utils.arrow_converter import (
+    arrow_to_metric_data_points,
+    metric_data_points_to_arrow,
+)
 
 
 class CVec:
@@ -63,15 +66,20 @@ class CVec:
         }
 
     def _make_request(
-        self, method: str, endpoint: str, params: Optional[dict] = None, json: Optional[dict] = None, 
-        data: Optional[bytes] = None, headers: Optional[dict] = None
+        self,
+        method: str,
+        endpoint: str,
+        params: Optional[dict] = None,
+        json: Optional[dict] = None,
+        data: Optional[bytes] = None,
+        headers: Optional[dict] = None,
     ) -> Any:
         """Helper method to make HTTP requests."""
         url = urljoin(self.host, endpoint)
         request_headers = self._get_headers()
         if headers:
             request_headers.update(headers)
-            
+
         response = requests.request(
             method=method,
             url=url,
@@ -81,8 +89,11 @@ class CVec:
             data=data,
         )
         response.raise_for_status()
-        
-        if response.headers.get('content-type') == 'application/vnd.apache.arrow.stream':
+
+        if (
+            response.headers.get("content-type")
+            == "application/vnd.apache.arrow.stream"
+        ):
             return response.content
         return response.json()
 
@@ -123,7 +134,9 @@ class CVec:
             "limit": limit,
         }
 
-        response_data = self._make_request("GET", f"/api/metrics/spans/{name}", params=params)
+        response_data = self._make_request(
+            "GET", f"/api/metrics/spans/{name}", params=params
+        )
         return [Span.model_validate(span_data) for span_data in response_data]
 
     def get_metric_data(
@@ -137,7 +150,7 @@ class CVec:
         Return all data-points within a given [start_at, end_at) interval,
         optionally selecting a given list of metric names.
         Returns a list of MetricDataPoint objects, one for each metric value transition.
-        
+
         Args:
             names: Optional list of metric names to filter by
             start_at: Optional start time for the query
@@ -155,10 +168,12 @@ class CVec:
 
         endpoint = "/api/metrics/data/arrow" if use_arrow else "/api/metrics/data"
         response_data = self._make_request("GET", endpoint, params=params)
-        
+
         if use_arrow:
             return arrow_to_metric_data_points(response_data)
-        return [MetricDataPoint.model_validate(point_data) for point_data in response_data]
+        return [
+            MetricDataPoint.model_validate(point_data) for point_data in response_data
+        ]
 
     def get_metric_arrow(
         self,
@@ -170,7 +185,7 @@ class CVec:
         Return all data-points within a given [start_at, end_at) interval,
         optionally selecting a given list of metric names.
         Returns Arrow IPC format data that can be read using pyarrow.ipc.open_file.
-        
+
         Args:
             names: Optional list of metric names to filter by
             start_at: Optional start time for the query
@@ -207,27 +222,27 @@ class CVec:
         return [Metric.model_validate(metric_data) for metric_data in response_data]
 
     def add_metric_data(
-        self, 
+        self,
         data_points: List[MetricDataPoint],
         use_arrow: bool = False,
     ) -> None:
         """
         Add multiple metric data points to the database.
-        
+
         Args:
             data_points: List of MetricDataPoint objects to add
             use_arrow: If True, uses Arrow format for data transfer (more efficient for large datasets)
         """
         endpoint = "/api/metrics/data/arrow" if use_arrow else "/api/metrics/data"
-        
+
         if use_arrow:
             arrow_data = metric_data_points_to_arrow(data_points)
             self._make_request(
-                "POST", 
-                endpoint, 
+                "POST",
+                endpoint,
                 data=arrow_data,
-                headers={"Content-Type": "application/vnd.apache.arrow.stream"}
+                headers={"Content-Type": "application/vnd.apache.arrow.stream"},
             )
         else:
-            data_dicts = [point.model_dump(mode='json') for point in data_points]
+            data_dicts = [point.model_dump(mode="json") for point in data_points]
             self._make_request("POST", endpoint, json=data_dicts)
