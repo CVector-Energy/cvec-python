@@ -1,6 +1,6 @@
 import pytest
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from datetime import datetime
 from cvec import CVec
 from cvec.models.metric import Metric
