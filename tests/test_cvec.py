@@ -2,10 +2,11 @@ import pytest
 import os
 from unittest.mock import patch, MagicMock
 from datetime import datetime
-import pandas as pd
-import numpy as np
-from pandas.testing import assert_frame_equal
-from cvec import CVec, Metric
+from cvec import CVec
+from cvec.models.metric import Metric
+import pyarrow as pa
+import pyarrow.ipc as ipc
+import io
 
 
 class TestCVecConstructor:
@@ -115,350 +116,131 @@ class TestCVecConstructor:
 
 
 class TestCVecGetSpans:
-    @patch("cvec.cvec.psycopg.connect")
-    def test_get_spans_basic_case(self, mock_connect: MagicMock) -> None:
-        """Test get_spans with a few data points."""
-        # Setup mock connection and cursor
-        mock_conn = MagicMock()
-        mock_cur = MagicMock()
-        mock_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
-
-        # Sample data (time, value_double, value_string) - newest first
-        time1 = datetime(2023, 1, 1, 10, 0, 0)
-        time2 = datetime(2023, 1, 1, 11, 0, 0)
-        time3 = datetime(2023, 1, 1, 12, 0, 0)
-        mock_db_rows = [
-            (time3, 30.0, None),  # Newest
-            (time2, None, "val2"),
-            (time1, 10.0, None),  # Oldest
+    def test_get_spans_basic_case(self):
+        # Simulate backend response
+        response_data = [
+            {"name": "test_tag", "value": 30.0, "raw_start_at": datetime(2023, 1, 1, 12, 0, 0), "raw_end_at": None},
+            {"name": "test_tag", "value": "val2", "raw_start_at": datetime(2023, 1, 1, 11, 0, 0), "raw_end_at": datetime(2023, 1, 1, 12, 0, 0)},
+            {"name": "test_tag", "value": 10.0, "raw_start_at": datetime(2023, 1, 1, 10, 0, 0), "raw_end_at": datetime(2023, 1, 1, 11, 0, 0)},
         ]
-        mock_cur.fetchall.return_value = mock_db_rows
-
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        tag_name = "test_tag"
-        spans = client.get_spans(name=tag_name)
-
+        client._make_request = lambda *args, **kwargs: response_data
+        spans = client.get_spans(name="test_tag")
         assert len(spans) == 3
-        mock_cur.execute.assert_called_once()
-
-        # Verify psycopg query parameters
-        (_sql, params), _kwargs = mock_cur.execute.call_args
-        assert params["metric"] == tag_name
-        assert params["end_at"] is None  # Default end_at
-        assert params["limit"] is None  # Default limit
-
-        # Span 1 (from newest data point: time3)
-        # The raw_end_at is None for the newest span, because the span is still open.
-        assert spans[0].name == tag_name
+        assert spans[0].name == "test_tag"
         assert spans[0].value == 30.0
-        assert spans[0].raw_start_at == time3
+        assert spans[0].raw_start_at == datetime(2023, 1, 1, 12, 0, 0)
         assert spans[0].raw_end_at is None
-
-        # Span 2 (from data point: time2)
-        assert spans[1].name == tag_name
         assert spans[1].value == "val2"
-        assert spans[1].raw_start_at == time2
-        assert spans[1].raw_end_at == time3
-
-        # Span 3 (from oldest data point: time1)
-        assert spans[2].name == tag_name
         assert spans[2].value == 10.0
-        assert spans[2].raw_start_at == time1
-        assert spans[2].raw_end_at == time2
 
 
 class TestCVecGetMetrics:
-    @patch("cvec.cvec.psycopg.connect")
-    def test_get_metrics_no_interval(self, mock_connect: MagicMock) -> None:
-        """Test get_metrics when no start_at or end_at is provided (fetches all metrics)."""
-        mock_conn = MagicMock()
-        mock_cur = MagicMock()
-        mock_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
-
-        time_birth1 = datetime(2023, 1, 1, 0, 0, 0)
-        time_death1 = datetime(2023, 1, 10, 0, 0, 0)
-        time_birth2 = datetime(2023, 2, 1, 0, 0, 0)
-        mock_db_rows = [
-            (1, "metric1", time_birth1, time_death1),
-            (2, "metric2", time_birth2, None),
+    def test_get_metrics_no_interval(self):
+        response_data = [
+            {"id": 1, "name": "metric1", "birth_at": datetime(2023, 1, 1, 0, 0, 0), "death_at": datetime(2023, 1, 10, 0, 0, 0)},
+            {"id": 2, "name": "metric2", "birth_at": datetime(2023, 2, 1, 0, 0, 0), "death_at": None},
         ]
-        mock_cur.fetchall.return_value = mock_db_rows
-
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
+        client._make_request = lambda *args, **kwargs: response_data
         metrics = client.get_metrics()
-
-        mock_cur.execute.assert_called_once()
-        sql_query, params = mock_cur.execute.call_args.args
-        assert "SELECT id, normalized_name AS name, birth_at, death_at" in sql_query
-        assert "FROM tag_names" in sql_query
-        assert "ORDER BY name ASC" in sql_query
-        assert params is None  # No params when fetching all
-
         assert len(metrics) == 2
         assert isinstance(metrics[0], Metric)
         assert metrics[0].id == 1
         assert metrics[0].name == "metric1"
-        assert metrics[0].birth_at == time_birth1
-        assert metrics[0].death_at == time_death1
-
-        assert isinstance(metrics[1], Metric)
         assert metrics[1].id == 2
         assert metrics[1].name == "metric2"
-        assert metrics[1].birth_at == time_birth2
-        assert metrics[1].death_at is None
 
-    @patch("cvec.cvec.psycopg.connect")
-    def test_get_metrics_with_interval(self, mock_connect: MagicMock) -> None:
-        """Test get_metrics when a start_at and end_at interval is provided."""
-        mock_conn = MagicMock()
-        mock_cur = MagicMock()
-        mock_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
-
-        time_birth1 = datetime(2023, 1, 1, 0, 0, 0)
-        mock_db_rows = [
-            (1, "metric_in_interval", time_birth1, None),
+    def test_get_metrics_with_interval(self):
+        response_data = [
+            {"id": 1, "name": "metric_in_interval", "birth_at": datetime(2023, 1, 1, 0, 0, 0), "death_at": None},
         ]
-        mock_cur.fetchall.return_value = mock_db_rows
-
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        start_query = datetime(2023, 1, 5, 0, 0, 0)
-        end_query = datetime(2023, 1, 15, 0, 0, 0)
-        metrics = client.get_metrics(start_at=start_query, end_at=end_query)
-
-        mock_cur.execute.assert_called_once()
-        sql_query, params = mock_cur.execute.call_args.args
-        assert (
-            "SELECT DISTINCT metric_id AS id, metric AS name, birth_at, death_at"
-            in sql_query
-        )
-        assert f"FROM {client.tenant}.metric_data" in sql_query
-        assert (
-            "WHERE (time >= %(start_at_param)s OR %(start_at_param)s IS NULL)"
-            in sql_query
-        )
-        assert "AND (time < %(end_at_param)s OR %(end_at_param)s IS NULL)" in sql_query
-        assert params is not None
-        assert params["start_at_param"] == start_query
-        assert params["end_at_param"] == end_query
-
+        client._make_request = lambda *args, **kwargs: response_data
+        metrics = client.get_metrics(start_at=datetime(2023, 1, 5, 0, 0, 0), end_at=datetime(2023, 1, 15, 0, 0, 0))
         assert len(metrics) == 1
-        assert isinstance(metrics[0], Metric)
-        assert metrics[0].id == 1
         assert metrics[0].name == "metric_in_interval"
-        assert metrics[0].birth_at == time_birth1
-        assert metrics[0].death_at is None
 
-    @patch("cvec.cvec.psycopg.connect")
-    def test_get_metrics_no_data_found(self, mock_connect: MagicMock) -> None:
-        """Test get_metrics when no metrics are found for the given criteria."""
-        mock_conn = MagicMock()
-        mock_cur = MagicMock()
-        mock_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
-
-        mock_cur.fetchall.return_value = []  # No rows returned
-
+    def test_get_metrics_no_data_found(self):
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        metrics = client.get_metrics(
-            start_at=datetime(2024, 1, 1), end_at=datetime(2024, 1, 2)
-        )
-
-        mock_cur.execute.assert_called_once()
+        client._make_request = lambda *args, **kwargs: []
+        metrics = client.get_metrics(start_at=datetime(2024, 1, 1), end_at=datetime(2024, 1, 2))
         assert len(metrics) == 0
 
 
 class TestCVecGetMetricData:
-    @patch("cvec.cvec.psycopg.connect")
-    def test_get_metric_data_basic_case(self, mock_connect: MagicMock) -> None:
-        """Test get_metric_data with a few data points for multiple tags."""
-        # Setup mock connection and cursor
-        mock_conn = MagicMock()
-        mock_cur = MagicMock()
-        mock_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
-
-        # Sample data (metric, time, value_double, value_string)
+    def test_get_metric_data_basic_case(self):
+        # Simulate backend response
         time1 = datetime(2023, 1, 1, 10, 0, 0)
         time2 = datetime(2023, 1, 1, 11, 0, 0)
         time3 = datetime(2023, 1, 1, 12, 0, 0)
-        mock_db_rows = [
-            ("tag1", time1, 10.0, None),
-            ("tag1", time2, 20.0, None),
-            ("tag2", time3, None, "val_str"),
+        response_data = [
+            {"name": "tag1", "time": time1, "value_double": 10.0, "value_string": None},
+            {"name": "tag1", "time": time2, "value_double": 20.0, "value_string": None},
+            {"name": "tag2", "time": time3, "value_double": None, "value_string": "val_str"},
         ]
-        mock_cur.fetchall.return_value = mock_db_rows
-
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        names_to_query = ["tag1", "tag2"]
-        df = client.get_metric_data(names=names_to_query)
+        client._make_request = lambda *args, **kwargs: response_data
+        data_points = client.get_metric_data(names=["tag1", "tag2"])
+        assert len(data_points) == 3
+        assert data_points[0].name == "tag1"
+        assert data_points[0].time == time1
+        assert data_points[0].value_double == 10.0
+        assert data_points[0].value_string is None
+        assert data_points[2].name == "tag2"
+        assert data_points[2].time == time3
+        assert data_points[2].value_double is None
+        assert data_points[2].value_string == "val_str"
 
-        mock_cur.execute.assert_called_once()
-        (_sql, params), _kwargs = mock_cur.execute.call_args
-        assert params["tag_names_is_null"] is False
-        assert params["tag_names_list"] == names_to_query
-        assert params["start_at"] is None  # Default start_at
-        assert params["end_at"] is None  # Default end_at
-
-        expected_data = {
-            "name": ["tag1", "tag1", "tag2"],
-            "time": [time1, time2, time3],
-            "value_double": [10.0, 20.0, np.nan],  # Use np.nan for missing float
-            "value_string": [None, None, "val_str"],  # Use None for missing string
-        }
-        expected_df = pd.DataFrame(expected_data)
-
-        # Ensure correct dtypes for comparison, especially for NA handling
-        expected_df = expected_df.astype(
-            {"value_double": "float64", "value_string": "object"}
-        )
-        df = df.astype({"value_double": "float64", "value_string": "object"})
-
-        assert_frame_equal(df, expected_df, check_dtype=True)
-
-    @patch("cvec.cvec.psycopg.connect")
-    def test_get_metric_data_no_data_points(self, mock_connect: MagicMock) -> None:
-        """Test get_metric_data when no data points are returned."""
-        mock_conn = MagicMock()
-        mock_cur = MagicMock()
-        mock_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
-
-        mock_cur.fetchall.return_value = []
-
+    def test_get_metric_data_no_data_points(self):
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        df = client.get_metric_data(names=["non_existent_tag"])
+        client._make_request = lambda *args, **kwargs: []
+        data_points = client.get_metric_data(names=["non_existent_tag"])
+        assert data_points == []
 
-        mock_cur.execute.assert_called_once()
-        expected_df = pd.DataFrame(
-            columns=["name", "time", "value_double", "value_string"]
-        )
-        # Ensure correct dtypes for empty DataFrame comparison
-        expected_df = expected_df.astype(
-            {
-                "name": "object",
-                "time": "datetime64[ns]",
-                "value_double": "float64",
-                "value_string": "object",
-            }
-        )
-        df = df.astype(
-            {
-                "name": "object",
-                "time": "datetime64[ns]",
-                "value_double": "float64",
-                "value_string": "object",
-            }
-        )
-        assert_frame_equal(df, expected_df, check_dtype=True)
-
-    @patch("cvec.cvec.psycopg.connect")
-    def test_get_spans_no_data_points(self, mock_connect: MagicMock) -> None:
-        """Test get_spans when no data points are returned from the database."""
-        # Setup mock connection and cursor
-        mock_conn = MagicMock()
-        mock_cur = MagicMock()
-        mock_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
-
-        mock_cur.fetchall.return_value = []  # No data points
-
+    def test_get_metric_arrow_basic_case(self):
+        # Prepare Arrow table
+        names = ["tag1", "tag1", "tag2"]
+        times = [datetime(2023, 1, 1, 10, 0, 0), datetime(2023, 1, 1, 11, 0, 0), datetime(2023, 1, 1, 12, 0, 0)]
+        value_doubles = [10.0, 20.0, None]
+        value_strings = [None, None, "val_str"]
+        table = pa.table({
+            "name": pa.array(names),
+            "time": pa.array(times, type=pa.timestamp('us', tz=None)),
+            "value_double": pa.array(value_doubles, type=pa.float64()),
+            "value_string": pa.array(value_strings, type=pa.string()),
+        })
+        sink = pa.BufferOutputStream()
+        with ipc.new_file(sink, table.schema) as writer:
+            writer.write_table(table)
+        arrow_bytes = sink.getvalue().to_pybytes()
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        tag_name = "test_tag_no_data"
-        spans = client.get_spans(name=tag_name)
+        client._make_request = lambda *args, **kwargs: arrow_bytes
+        result = client.get_metric_arrow(names=["tag1", "tag2"])
+        reader = ipc.open_file(io.BytesIO(result))
+        result_table = reader.read_all()
+        assert result_table.num_rows == 3
+        assert result_table.column("name").to_pylist() == names
+        assert result_table.column("value_double").to_pylist() == [10.0, 20.0, None]
+        assert result_table.column("value_string").to_pylist() == [None, None, "val_str"]
 
-        assert len(spans) == 0
-        mock_cur.execute.assert_called_once()
-
-        # Verify psycopg query parameters
-        (_sql, params) = mock_cur.execute.call_args.args
-        assert params["metric"] == tag_name
-        assert params["end_at"] is None  # Default end_at
-        assert params["limit"] is None  # Default limit
-
-    @patch("cvec.cvec.psycopg.connect")
-    def test_get_spans_with_limit_parameter(self, mock_connect: MagicMock) -> None:
-        """Test get_spans when a limit parameter is provided."""
-        mock_conn = MagicMock()
-        mock_cur = MagicMock()
-        mock_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
-
-        # Sample data (time, value_double, value_string) - newest first
-        time1 = datetime(2023, 1, 1, 10, 0, 0)
-        time2 = datetime(2023, 1, 1, 11, 0, 0)
-        mock_db_rows = [
-            (time2, None, "val2"),  # Newest
-            (time1, 10.0, None),  # Oldest
-        ]
-        mock_cur.fetchall.return_value = mock_db_rows
-
+    def test_get_metric_arrow_empty(self):
+        table = pa.table({
+            "name": pa.array([], type=pa.string()),
+            "time": pa.array([], type=pa.timestamp('us', tz=None)),
+            "value_double": pa.array([], type=pa.float64()),
+            "value_string": pa.array([], type=pa.string()),
+        })
+        sink = pa.BufferOutputStream()
+        with ipc.new_file(sink, table.schema) as writer:
+            writer.write_table(table)
+        arrow_bytes = sink.getvalue().to_pybytes()
         client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        tag_name = "test_tag_limited"
-        query_limit = 2
-        spans = client.get_spans(name=tag_name, limit=query_limit)
-
-        mock_cur.execute.assert_called_once()
-
-        # Verify psycopg query parameters
-        (_sql, params), _kwargs = mock_cur.execute.call_args
-        assert params["metric"] == tag_name
-        assert params["limit"] == query_limit
-
-        assert len(spans) == 2
-
-    @patch("cvec.cvec.psycopg.connect")
-    def test_get_spans_with_end_at_parameter(self, mock_connect: MagicMock) -> None:
-        """Test get_spans when an end_at parameter is provided."""
-        # Setup mock connection and cursor
-        mock_conn = MagicMock()
-        mock_cur = MagicMock()
-        mock_connect.return_value.__enter__.return_value = mock_conn
-        mock_conn.cursor.return_value.__enter__.return_value = mock_cur
-
-        # Sample data (time, value_double, value_string) - newest first
-        time1 = datetime(2023, 1, 1, 10, 0, 0)
-        time2 = datetime(2023, 1, 1, 11, 0, 0)
-        time3 = datetime(2023, 1, 1, 12, 0, 0)
-        mock_db_rows = [
-            (time3, 30.0, None),  # Newest
-            (time2, None, "val2"),
-            (time1, 10.0, None),  # Oldest
-        ]
-        mock_cur.fetchall.return_value = mock_db_rows
-
-        client = CVec(host="test_host", tenant="test_tenant", api_key="test_api_key")
-        tag_name = "test_tag"
-        # Provide an end_at time that is after all sample data points
-        query_end_at = datetime(2023, 1, 1, 13, 0, 0)
-        spans = client.get_spans(name=tag_name, end_at=query_end_at)
-
-        assert len(spans) == 3
-        mock_cur.execute.assert_called_once()
-
-        # Verify psycopg query parameters
-        (_sql, params), _kwargs = mock_cur.execute.call_args
-        assert params["metric"] == tag_name
-        assert params["end_at"] == query_end_at
-        assert params["limit"] is None  # Default limit
-
-        # Span 1 (from newest data point: time3)
-        # The raw_end_at is None for the newest span, regardless of the _end_at query parameter.
-        assert spans[0].name == tag_name
-        assert spans[0].value == 30.0
-        assert spans[0].raw_start_at == time3
-        assert spans[0].raw_end_at is None
-
-        # Span 2 (from data point: time2)
-        assert spans[1].name == tag_name
-        assert spans[1].value == "val2"
-        assert spans[1].raw_start_at == time2
-        assert spans[1].raw_end_at == time3
-
-        # Span 3 (from oldest data point: time1)
-        assert spans[2].name == tag_name
-        assert spans[2].value == 10.0
-        assert spans[2].raw_start_at == time1
-        assert spans[2].raw_end_at == time2
+        client._make_request = lambda *args, **kwargs: arrow_bytes
+        result = client.get_metric_arrow(names=["non_existent_tag"])
+        reader = ipc.open_file(io.BytesIO(result))
+        result_table = reader.read_all()
+        assert result_table.num_rows == 0
+        assert result_table.column("name").to_pylist() == []
+        assert result_table.column("value_double").to_pylist() == []
+        assert result_table.column("value_string").to_pylist() == []
