@@ -1,13 +1,15 @@
 from cvec import CVec
 import io
 import pyarrow.ipc as ipc  # type: ignore[import-untyped]
+import os
 
 
 def main() -> None:
     cvec = CVec(
-        host="https://cvec-backend-rzhang-cvec-sandbox.deployments.quix.io",
-        tenant="test",
-        api_key="your-api-key",
+        host=os.environ.get("CVEC_HOST", "https://sandbox.cvector.dev"),
+        email=os.environ.get("CVEC_EMAIL", "your-email@example.com"),
+        password=os.environ.get("CVEC_PASSWORD", "your-password"),
+        publishable_key=os.environ.get("CVEC_PUBLISHABLE_KEY", "your-supabase-publishable-key"),
     )
     test_metric_name = "python-sdk/test"
     print("\nGetting metric data as Arrow...")
