@@ -7,10 +7,10 @@ import os
 
 def main() -> None:
     cvec = CVec(
-        host=os.environ.get("CVEC_HOST", "https://sandbox.cvector.dev"),
-        email=os.environ.get("CVEC_EMAIL", "your-email@example.com"),
+        host=os.environ.get("CVEC_HOST", "https://your-subdomain.cvector.dev"),
+        email=os.environ.get("CVEC_EMAIL", "your-email@cvector.app"),
         password=os.environ.get("CVEC_PASSWORD", "your-password"),
-        publishable_key=os.environ.get("CVEC_PUBLISHABLE_KEY", "your-supabase-publishable-key"),
+        publishable_key=os.environ.get("CVEC_PUBLISHABLE_KEY", "your-cvec-publishable-key"),
     )
     test_metric_name = "python-sdk/test"
     print("\nAdding new metric data using Arrow...")
