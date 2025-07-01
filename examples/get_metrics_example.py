@@ -1,11 +1,13 @@
 from cvec import CVec
+import os
 
 
 def main() -> None:
     cvec = CVec(
-        host="https://cvec-backend-rzhang-cvec-sandbox.deployments.quix.io",  # Replace with your API host
-        tenant="test",  # Replace with your tenant
-        api_key="your-api-key",  # Replace with your API key
+        host=os.environ.get("CVEC_HOST", "https://sandbox.cvector.dev"),  # Replace with your API host
+        email=os.environ.get("CVEC_EMAIL", "your-email@example.com"),
+        password=os.environ.get("CVEC_PASSWORD", "your-password"),
+        publishable_key=os.environ.get("CVEC_PUBLISHABLE_KEY", "your-supabase-publishable-key"),
     )
     print("\nGetting available metrics...")
     metrics = cvec.get_metrics()

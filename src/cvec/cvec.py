@@ -19,49 +19,56 @@ class CVec:
     """
 
     host: Optional[str]
-    tenant: Optional[str]
-    api_key: Optional[str]
     default_start_at: Optional[datetime]
     default_end_at: Optional[datetime]
+    # Supabase authentication
+    _access_token: Optional[str]
+    _refresh_token: Optional[str]
+    _publishable_key: Optional[str]
 
     def __init__(
         self,
         host: Optional[str] = None,
-        tenant: Optional[str] = None,
-        api_key: Optional[str] = None,
         default_start_at: Optional[datetime] = None,
         default_end_at: Optional[datetime] = None,
+        email: Optional[str] = None,
+        password: Optional[str] = None,
+        publishable_key: Optional[str] = None,
     ) -> None:
-        """
-        Setup the SDK with the given host and API Key.
-        The host and API key are loaded from environment variables CVEC_HOST,
-        CVEC_TENANT, CVEC_API_KEY, if they are not given as arguments to the constructor.
-        The default_start_at and default_end_at can provide a default query time interval for API methods.
-        """
+        
         self.host = host or os.environ.get("CVEC_HOST")
-        self.tenant = tenant or os.environ.get("CVEC_TENANT")
-        self.api_key = api_key or os.environ.get("CVEC_API_KEY")
         self.default_start_at = default_start_at
         self.default_end_at = default_end_at
+        
+        # Supabase authentication
+        self._access_token = None
+        self._refresh_token = None
+        self._publishable_key = publishable_key or os.environ.get("CVEC_PUBLISHABLE_KEY")
 
         if not self.host:
             raise ValueError(
                 "CVEC_HOST must be set either as an argument or environment variable"
             )
-        if not self.tenant:
+        if not self._publishable_key:
             raise ValueError(
-                "CVEC_TENANT must be set either as an argument or environment variable"
+                "CVEC_PUBLISHABLE_KEY must be set either as an argument or environment variable"
             )
-        if not self.api_key:
+        
+        # Handle authentication
+        if email and password:
+            self._login_with_supabase(email, password)
+        else:
             raise ValueError(
-                "CVEC_API_KEY must be set either as an argument or environment variable"
+                "Email and password must be provided for Supabase authentication"
             )
 
     def _get_headers(self) -> Dict[str, str]:
         """Helper method to get request headers."""
+        if not self._access_token:
+            raise ValueError("No access token available. Please login first.")
+        
         return {
-            "Authorization": f"Bearer {self.api_key}",
-            "X-Tenant": self.tenant or "",
+            "Authorization": f"Bearer {self._access_token}",
             "Content-Type": "application/json",
         }
 
@@ -88,6 +95,30 @@ class CVec:
             json=json,
             data=data,
         )
+        
+        # If we get a 401 and we have Supabase tokens, try to refresh and retry
+        if response.status_code == 401 and self._access_token and self._refresh_token:
+            try:
+                self._refresh_supabase_token()
+                # Update headers with new token
+                request_headers = self._get_headers()
+                if headers:
+                    request_headers.update(headers)
+                
+                # Retry the request
+                response = requests.request(
+                    method=method,
+                    url=url,
+                    headers=request_headers,
+                    params=params,
+                    json=json,
+                    data=data,
+                )
+            except Exception:
+                print("Token refresh failed")
+                # If refresh fails, continue with the original error
+                pass
+        
         response.raise_for_status()
 
         if (
@@ -220,7 +251,7 @@ class CVec:
             "end_at": _end_at.isoformat() if _end_at else None,
         }
 
-        response_data = self._make_request("GET", "/api/metrics", params=params)
+        response_data = self._make_request("GET", "/api/metrics/", params=params)
         return [Metric.model_validate(metric_data) for metric_data in response_data]
 
     def add_metric_data(
@@ -250,3 +281,56 @@ class CVec:
                 point.model_dump(mode="json") for point in data_points
             ]
             self._make_request("POST", endpoint, json=data_dicts)  # type: ignore[arg-type]
+
+    def _login_with_supabase(self, email: str, password: str) -> None:
+        """
+        Login to Supabase and get access/refresh tokens.
+        
+        Args:
+            email: User email
+            password: User password
+        """
+        supabase_url = f"{self.host}/supabase/auth/v1/token?grant_type=password"
+        
+        payload = {
+            "email": email,
+            "password": password
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "apikey": self._publishable_key
+        }
+        
+        response = requests.post(supabase_url, json=payload, headers=headers)
+        response.raise_for_status()
+        
+        data = response.json()
+
+        self._access_token = data["access_token"]
+        self._refresh_token = data["refresh_token"]
+
+    def _refresh_supabase_token(self) -> None:
+        """
+        Refresh the Supabase access token using the refresh token.
+        """
+        if not self._refresh_token:
+            raise ValueError("No refresh token available")
+            
+        supabase_url = f"{self.host}/supabase/auth/v1/token?grant_type=refresh_token"
+        
+        payload = {
+            "refresh_token": self._refresh_token
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "apikey": self._publishable_key
+        }
+        
+        response = requests.post(supabase_url, json=payload, headers=headers)
+        response.raise_for_status()
+        
+        data = response.json()
+        self._access_token = data["access_token"]
+        self._refresh_token = data["refresh_token"]
