@@ -35,15 +35,16 @@ class CVec:
         password: Optional[str] = None,
         publishable_key: Optional[str] = None,
     ) -> None:
-        
         self.host = host or os.environ.get("CVEC_HOST")
         self.default_start_at = default_start_at
         self.default_end_at = default_end_at
-        
+
         # Supabase authentication
         self._access_token = None
         self._refresh_token = None
-        self._publishable_key = publishable_key or os.environ.get("CVEC_PUBLISHABLE_KEY")
+        self._publishable_key = publishable_key or os.environ.get(
+            "CVEC_PUBLISHABLE_KEY"
+        )
 
         if not self.host:
             raise ValueError(
@@ -53,7 +54,7 @@ class CVec:
             raise ValueError(
                 "CVEC_PUBLISHABLE_KEY must be set either as an argument or environment variable"
             )
-        
+
         # Handle authentication
         if email and password:
             self._login_with_supabase(email, password)
@@ -66,7 +67,7 @@ class CVec:
         """Helper method to get request headers."""
         if not self._access_token:
             raise ValueError("No access token available. Please login first.")
-        
+
         return {
             "Authorization": f"Bearer {self._access_token}",
             "Content-Type": "application/json",
@@ -95,7 +96,7 @@ class CVec:
             json=json,
             data=data,
         )
-        
+
         # If we get a 401 and we have Supabase tokens, try to refresh and retry
         if response.status_code == 401 and self._access_token and self._refresh_token:
             try:
@@ -104,7 +105,7 @@ class CVec:
                 request_headers = self._get_headers()
                 if headers:
                     request_headers.update(headers)
-                
+
                 # Retry the request
                 response = requests.request(
                     method=method,
@@ -118,7 +119,7 @@ class CVec:
                 print("Token refresh failed")
                 # If refresh fails, continue with the original error
                 pass
-        
+
         response.raise_for_status()
 
         if (
@@ -285,26 +286,20 @@ class CVec:
     def _login_with_supabase(self, email: str, password: str) -> None:
         """
         Login to Supabase and get access/refresh tokens.
-        
+
         Args:
             email: User email
             password: User password
         """
         supabase_url = f"{self.host}/supabase/auth/v1/token?grant_type=password"
-        
-        payload = {
-            "email": email,
-            "password": password
-        }
-        
-        headers = {
-            "Content-Type": "application/json",
-            "apikey": self._publishable_key
-        }
-        
+
+        payload = {"email": email, "password": password}
+
+        headers = {"Content-Type": "application/json", "apikey": self._publishable_key}
+
         response = requests.post(supabase_url, json=payload, headers=headers)
         response.raise_for_status()
-        
+
         data = response.json()
 
         self._access_token = data["access_token"]
@@ -316,21 +311,16 @@ class CVec:
         """
         if not self._refresh_token:
             raise ValueError("No refresh token available")
-            
+
         supabase_url = f"{self.host}/supabase/auth/v1/token?grant_type=refresh_token"
-        
-        payload = {
-            "refresh_token": self._refresh_token
-        }
-        
-        headers = {
-            "Content-Type": "application/json",
-            "apikey": self._publishable_key
-        }
-        
+
+        payload = {"refresh_token": self._refresh_token}
+
+        headers = {"Content-Type": "application/json", "apikey": self._publishable_key}
+
         response = requests.post(supabase_url, json=payload, headers=headers)
         response.raise_for_status()
-        
+
         data = response.json()
         self._access_token = data["access_token"]
         self._refresh_token = data["refresh_token"]
