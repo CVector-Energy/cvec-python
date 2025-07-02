@@ -12,108 +12,84 @@ from typing import Any
 
 class TestCVecConstructor:
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    def test_constructor_with_arguments(self, mock_login: Any) -> None:
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_constructor_with_arguments(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
         """Test CVec constructor with all arguments provided."""
         client = CVec(
             host="test_host",
             default_start_at=datetime(2023, 1, 1, 0, 0, 0),
             default_end_at=datetime(2023, 1, 2, 0, 0, 0),
-            email="user@example.com",
-            password="password123",
-            publishable_key="test_publishable_key",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
         )
         assert client.host == "test_host"
         assert client.default_start_at == datetime(2023, 1, 1, 0, 0, 0)
         assert client.default_end_at == datetime(2023, 1, 2, 0, 0, 0)
         assert client._publishable_key == "test_publishable_key"
+        assert client._api_key == "cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="env_publishable_key")
     @patch.dict(
         os.environ,
         {
             "CVEC_HOST": "env_host",
-            "CVEC_PUBLISHABLE_KEY": "env_publishable_key",
+            "CVEC_API_KEY": "cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
         },
         clear=True,
     )
-    def test_constructor_with_env_vars(self, mock_login: Any) -> None:
+    def test_constructor_with_env_vars(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
         """Test CVec constructor with environment variables."""
         client = CVec(
             default_start_at=datetime(2023, 2, 1, 0, 0, 0),
             default_end_at=datetime(2023, 2, 2, 0, 0, 0),
-            email="user@example.com",
-            password="password123",
         )
         assert client.host == "env_host"
         assert client._publishable_key == "env_publishable_key"
+        assert client._api_key == "cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O"
         assert client.default_start_at == datetime(2023, 2, 1, 0, 0, 0)
         assert client.default_end_at == datetime(2023, 2, 2, 0, 0, 0)
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
     @patch.dict(os.environ, {}, clear=True)
-    def test_constructor_missing_host_raises_value_error(self, mock_login: Any) -> None:
+    def test_constructor_missing_host_raises_value_error(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
         """Test CVec constructor raises ValueError if host is missing."""
         with pytest.raises(
             ValueError,
             match="CVEC_HOST must be set either as an argument or environment variable",
         ):
-            CVec(
-                email="user@example.com",
-                password="password123",
-                publishable_key="test_publishable_key",
-            )
+            CVec(api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O")
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
     @patch.dict(os.environ, {}, clear=True)
-    def test_constructor_missing_publishable_key_raises_value_error(
-        self, mock_login: Any
+    def test_constructor_missing_api_key_raises_value_error(
+        self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
-        """Test CVec constructor raises ValueError if publishable_key is missing."""
+        """Test CVec constructor raises ValueError if api_key is missing."""
         with pytest.raises(
             ValueError,
-            match="CVEC_PUBLISHABLE_KEY must be set either as an argument or environment variable",
+            match="CVEC_API_KEY must be set either as an argument or environment variable",
         ):
-            CVec(host="test_host", email="user@example.com", password="password123")
+            CVec(host="test_host")
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.dict(os.environ, {}, clear=True)
-    def test_constructor_missing_email_password_raises_value_error(
-        self, mock_login: Any
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_constructor_args_override_env_vars(
+        self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
-        """Test CVec constructor raises ValueError if email or password is missing."""
-        with pytest.raises(
-            ValueError,
-            match="Email and password must be provided for Supabase authentication",
-        ):
-            CVec(host="test_host", publishable_key="test_publishable_key")
-
-    @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.dict(
-        os.environ,
-        {
-            "CVEC_HOST": "env_host",
-            # CVEC_PUBLISHABLE_KEY is missing
-        },
-        clear=True,
-    )
-    def test_constructor_missing_publishable_key_env_var_raises_value_error(
-        self, mock_login: Any
-    ) -> None:
-        """Test CVec constructor raises ValueError if CVEC_PUBLISHABLE_KEY env var is missing."""
-        with pytest.raises(
-            ValueError,
-            match="CVEC_PUBLISHABLE_KEY must be set either as an argument or environment variable",
-        ):
-            CVec(email="user@example.com", password="password123")
-
-    @patch.object(CVec, "_login_with_supabase", return_value=None)
-    def test_constructor_args_override_env_vars(self, mock_login: Any) -> None:
         """Test CVec constructor arguments override environment variables."""
         with patch.dict(
             os.environ,
             {
                 "CVEC_HOST": "env_host",
-                "CVEC_PUBLISHABLE_KEY": "env_publishable_key",
+                "CVEC_API_KEY": "cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
             },
             clear=True,
         ):
@@ -121,19 +97,61 @@ class TestCVecConstructor:
                 host="arg_host",
                 default_start_at=datetime(2023, 3, 1, 0, 0, 0),
                 default_end_at=datetime(2023, 3, 2, 0, 0, 0),
-                email="user@example.com",
-                password="password123",
-                publishable_key="arg_publishable_key",
+                api_key="cva_differentKeyKALxMnxUdI9hanF0TBPvvvr1",
             )
             assert client.host == "arg_host"
-            assert client._publishable_key == "arg_publishable_key"
+            assert client._api_key == "cva_differentKeyKALxMnxUdI9hanF0TBPvvvr1"
             assert client.default_start_at == datetime(2023, 3, 1, 0, 0, 0)
             assert client.default_end_at == datetime(2023, 3, 2, 0, 0, 0)
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_construct_email_from_api_key(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test email construction from API key."""
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+        email = client._construct_email_from_api_key()
+        assert email == "cva+hHs0@cvector.app"
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_construct_email_from_api_key_invalid_format(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test email construction with invalid API key format."""
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+        client._api_key = "invalid_key"
+        with pytest.raises(ValueError, match="API key must start with 'cva_'"):
+            client._construct_email_from_api_key()
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_construct_email_from_api_key_invalid_length(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test email construction with invalid API key length."""
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+        client._api_key = "cva_short"
+        with pytest.raises(
+            ValueError, match="API key invalid length. Expected cva_ \\+ 36 symbols."
+        ):
+            client._construct_email_from_api_key()
 
 
 class TestCVecGetSpans:
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    def test_get_spans_basic_case(self, mock_login: Any) -> None:
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_get_spans_basic_case(self, mock_fetch_key: Any, mock_login: Any) -> None:
         # Simulate backend response
         response_data = [
             {
@@ -157,9 +175,7 @@ class TestCVecGetSpans:
         ]
         client = CVec(
             host="test_host",
-            email="user@example.com",
-            password="password123",
-            publishable_key="test_publishable_key",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
         )
         client._make_request = lambda *args, **kwargs: response_data  # type: ignore[method-assign]
         spans = client.get_spans(name="test_tag")
@@ -174,7 +190,10 @@ class TestCVecGetSpans:
 
 class TestCVecGetMetrics:
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    def test_get_metrics_no_interval(self, mock_login: Any) -> None:
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_get_metrics_no_interval(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
         response_data = [
             {
                 "id": 1,
@@ -191,9 +210,7 @@ class TestCVecGetMetrics:
         ]
         client = CVec(
             host="test_host",
-            email="user@example.com",
-            password="password123",
-            publishable_key="test_publishable_key",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
         )
         client._make_request = lambda *args, **kwargs: response_data  # type: ignore[method-assign]
         metrics = client.get_metrics()
@@ -205,7 +222,10 @@ class TestCVecGetMetrics:
         assert metrics[1].name == "metric2"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    def test_get_metrics_with_interval(self, mock_login: Any) -> None:
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_get_metrics_with_interval(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
         response_data = [
             {
                 "id": 1,
@@ -216,9 +236,7 @@ class TestCVecGetMetrics:
         ]
         client = CVec(
             host="test_host",
-            email="user@example.com",
-            password="password123",
-            publishable_key="test_publishable_key",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
         )
         client._make_request = lambda *args, **kwargs: response_data  # type: ignore[method-assign]
         metrics = client.get_metrics(
@@ -229,12 +247,13 @@ class TestCVecGetMetrics:
         assert metrics[0].name == "metric_in_interval"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    def test_get_metrics_no_data_found(self, mock_login: Any) -> None:
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_get_metrics_no_data_found(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
         client = CVec(
             host="test_host",
-            email="user@example.com",
-            password="password123",
-            publishable_key="test_publishable_key",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
         )
         client._make_request = lambda *args, **kwargs: []  # type: ignore[method-assign]
         metrics = client.get_metrics(
@@ -245,7 +264,10 @@ class TestCVecGetMetrics:
 
 class TestCVecGetMetricData:
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    def test_get_metric_data_basic_case(self, mock_login: Any) -> None:
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_get_metric_data_basic_case(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
         # Simulate backend response
         time1 = datetime(2023, 1, 1, 10, 0, 0)
         time2 = datetime(2023, 1, 1, 11, 0, 0)
@@ -262,9 +284,7 @@ class TestCVecGetMetricData:
         ]
         client = CVec(
             host="test_host",
-            email="user@example.com",
-            password="password123",
-            publishable_key="test_publishable_key",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
         )
         client._make_request = lambda *args, **kwargs: response_data  # type: ignore[method-assign]
         data_points = client.get_metric_data(names=["tag1", "tag2"])
@@ -279,19 +299,23 @@ class TestCVecGetMetricData:
         assert data_points[2].value_string == "val_str"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    def test_get_metric_data_no_data_points(self, mock_login: Any) -> None:
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_get_metric_data_no_data_points(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
         client = CVec(
             host="test_host",
-            email="user@example.com",
-            password="password123",
-            publishable_key="test_publishable_key",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
         )
         client._make_request = lambda *args, **kwargs: []  # type: ignore[method-assign]
         data_points = client.get_metric_data(names=["non_existent_tag"])
         assert data_points == []
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    def test_get_metric_arrow_basic_case(self, mock_login: Any) -> None:
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_get_metric_arrow_basic_case(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
         # Prepare Arrow table
         names = ["tag1", "tag1", "tag2"]
         times = [
@@ -315,9 +339,7 @@ class TestCVecGetMetricData:
         arrow_bytes = sink.getvalue().to_pybytes()
         client = CVec(
             host="test_host",
-            email="user@example.com",
-            password="password123",
-            publishable_key="test_publishable_key",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
         )
         client._make_request = lambda *args, **kwargs: arrow_bytes  # type: ignore[method-assign]
         result = client.get_metric_arrow(names=["tag1", "tag2"])
@@ -333,7 +355,8 @@ class TestCVecGetMetricData:
         ]
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    def test_get_metric_arrow_empty(self, mock_login: Any) -> None:
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_get_metric_arrow_empty(self, mock_fetch_key: Any, mock_login: Any) -> None:
         table = pa.table(
             {
                 "name": pa.array([], type=pa.string()),
@@ -348,9 +371,7 @@ class TestCVecGetMetricData:
         arrow_bytes = sink.getvalue().to_pybytes()
         client = CVec(
             host="test_host",
-            email="user@example.com",
-            password="password123",
-            publishable_key="test_publishable_key",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
         )
         client._make_request = lambda *args, **kwargs: arrow_bytes  # type: ignore[method-assign]
         result = client.get_metric_arrow(names=["non_existent_tag"])

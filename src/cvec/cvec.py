@@ -52,10 +52,10 @@ class CVec:
             raise ValueError(
                 "CVEC_API_KEY must be set either as an argument or environment variable"
             )
-        
+
         # Fetch publishable key from host config
         self._publishable_key = self._fetch_publishable_key()
-        
+
         # Handle authentication
         email = self._construct_email_from_api_key()
         self._login_with_supabase(email, self._api_key)
@@ -63,19 +63,22 @@ class CVec:
     def _construct_email_from_api_key(self) -> str:
         """
         Construct email from API key using the pattern cva+<keyId>@cvector.app
-        
+
         Returns:
             The constructed email address
-            
+
         Raises:
             ValueError: If the API key doesn't match the expected pattern
         """
+        if not self._api_key:
+            raise ValueError("API key is not set")
+        
         if not self._api_key.startswith("cva_"):
             raise ValueError("API key must start with 'cva_'")
-        
+
         if len(self._api_key) != 40:  # cva_ + 36 62-base encoded symbols
             raise ValueError("API key invalid length. Expected cva_ + 36 symbols.")
-        
+
         # Extract 4 characters after "cva_"
         key_id = self._api_key[4:8]
         return f"cva+{key_id}@cvector.app"
@@ -345,10 +348,10 @@ class CVec:
     def _fetch_publishable_key(self) -> str:
         """
         Fetch the publishable key from the host's config endpoint.
-        
+
         Returns:
             The publishable key from the config response
-            
+
         Raises:
             ValueError: If the config endpoint is not accessible or doesn't contain the key
         """
@@ -356,15 +359,15 @@ class CVec:
             config_url = f"{self.host}/config"
             response = requests.get(config_url)
             response.raise_for_status()
-            
+
             config_data = response.json()
             publishable_key = config_data.get("supabasePublishableKey")
-            
+
             if not publishable_key:
                 raise ValueError(f"Configuration fetched from {config_url} is invalid")
-            
-            return publishable_key
-            
+
+            return str(publishable_key)
+
         except requests.RequestException as e:
             raise ValueError(f"Failed to fetch config from {self.host}/config: {e}")
         except (KeyError, ValueError) as e:
