@@ -9,9 +9,6 @@ def main() -> None:
         ),  # Replace with your API host
         email=os.environ.get("CVEC_EMAIL", "your-email@cvector.app"),
         password=os.environ.get("CVEC_PASSWORD", "your-password"),
-        publishable_key=os.environ.get(
-            "CVEC_PUBLISHABLE_KEY", "your-cvec-publishable-key"
-        ),
     )
     print("\nGetting available metrics...")
     metrics = cvec.get_metrics()
