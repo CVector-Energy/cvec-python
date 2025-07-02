@@ -5,8 +5,7 @@ import os
 def main() -> None:
     cvec = CVec(
         host=os.environ.get("CVEC_HOST", "https://your-subdomain.cvector.dev"),
-        email=os.environ.get("CVEC_EMAIL", "your-email@cvector.app"),
-        password=os.environ.get("CVEC_PASSWORD", "your-password"),
+        api_key=os.environ.get("CVEC_API_KEY", "your-api-key"),
     )
     metrics = cvec.get_metrics()
     if metrics:
