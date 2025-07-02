@@ -72,7 +72,7 @@ class CVec:
         """
         if not self._api_key:
             raise ValueError("API key is not set")
-        
+
         if not self._api_key.startswith("cva_"):
             raise ValueError("API key must start with 'cva_'")
 
