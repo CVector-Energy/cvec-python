@@ -33,7 +33,7 @@ import cvec
 from datetime import datetime
 ```
 
-Construct the CVec client. The host, tenant, and api_key can be given through parameters to the constructor or from the environment variables CVEC_HOST, CVEC_TENANT, and CVEC_API_KEY:
+Construct the CVec client. The host, tenant, and api_key can be given through parameters to the constructor or from the environment variables CVEC_HOST, and CVEC_API_KEY:
 
 ```
 cvec = cvec.CVec()
@@ -48,7 +48,7 @@ The newest span for a metric does not have an end time, since it has not ended y
 To get the spans on `my_tag_name` since 2025-05-14 10am, run:
 
 ```
-for span in cvec.get_spans("mygroup/myedge/mode", start_at=datetime(2025, 5, 14, 10, 0, 0)):
+for span in cvec.get_spans("mygroup/myedge/node", start_at=datetime(2025, 5, 14, 10, 0, 0)):
     print("%s\t%s" % (span.value, span.raw_start_at))
 ```
 
@@ -121,7 +121,7 @@ The SDK provides an API client class named `CVec` with the following functions.
 
 ## `__init__(?host, ?tenant, ?api_key, ?default_start_at, ?default_end_at)`
 
-Setup the SDK with the given host and API Key. The host and API key are loaded from environment variables CVEC_HOST, CVEC_TENANT, CVEC_API_KEY, if they are not given as arguments to the constructor. The `default_start_at` and `default_end_at` can provide a default query time interval for API methods.
+Setup the SDK with the given host and API Key. The host and API key are loaded from environment variables CVEC_HOST, CVEC_API_KEY, if they are not given as arguments to the constructor. The `default_start_at` and `default_end_at` can provide a default query time interval for API methods.
 
 ## `get_spans(name, ?start_at, ?end_at, ?limit)`
 
