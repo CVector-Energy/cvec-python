@@ -143,6 +143,13 @@ If no relevant value changes are found, an empty list is returned.
 
 Return all data-points within a given [`start_at`, `end_at`) interval, optionally selecting a given list of metric names. The return value is a Pandas DataFrame with four columns: name, time, value_double, value_string. One row is returned for each metric value transition.
 
+## `add_metric_data(data_points, ?use_arrow)`
+
+Add multiple metric data points to the database.
+
+- `data_points`: A list of `MetricDataPoint` objects to add.
+- `use_arrow`: An optional boolean. If `True`, data is sent to the server using the more efficient Apache Arrow format. This is recommended for large datasets. Defaults to `False`.
+
 ## `get_metrics(?start_at, ?end_at)`
 
 Return a list of metrics that had at least one transition in the given [`start_at`, `end_at`) interval. All metrics are returned if no `start_at` and `end_at` are given.
