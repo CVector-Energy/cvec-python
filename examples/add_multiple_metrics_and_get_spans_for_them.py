@@ -10,9 +10,7 @@ from cvec.models.metric import MetricDataPoint
 
 def main() -> None:
     cvec = CVec(
-        host=os.environ.get(
-            "CVEC_HOST", "https://your-subdomain.cvector.dev"
-        ),
+        host=os.environ.get("CVEC_HOST", "https://your-subdomain.cvector.dev"),
         api_key=os.environ.get("CVEC_API_KEY", "your-api-key"),
     )
     test_metric_name = ""
@@ -26,9 +24,7 @@ def main() -> None:
     for metric in metrics:
         print(f"- {metric.name} - {metric.id}")
     if metrics:
-        found_metric_name = next(
-            (m.name for m in metrics if "Sensor_" in m.name)
-        )
+        found_metric_name = next((m.name for m in metrics if "Sensor_" in m.name))
         assert found_metric_name, "No suitable metric found"
         test_metric_name = found_metric_name
     print(f"\nUsing metric: {test_metric_name}")
@@ -81,18 +77,16 @@ def main() -> None:
         names=[test_metric_name],
     )
     assert len(data_points) > 0, "No data points found for the metric"
-    assert any(
-        dp.value_double == random_number_nonarrow for dp in data_points
-    ), "No data point found with the expected non-Arrow value"
-    assert any(
-        dp.value_string == str(random_number_nonarrow) for dp in data_points
-    ), "No data point found with the expected non-Arrow string value"
-    assert any(
-        dp.value_double == random_number_arrow for dp in data_points
-    ), "No data point found with the expected Arrow value"
-    print(
-        f"\nFound {len(data_points)} data points for metric '{test_metric_name}'"
+    assert any(dp.value_double == random_number_nonarrow for dp in data_points), (
+        "No data point found with the expected non-Arrow value"
     )
+    assert any(dp.value_string == str(random_number_nonarrow) for dp in data_points), (
+        "No data point found with the expected non-Arrow string value"
+    )
+    assert any(dp.value_double == random_number_arrow for dp in data_points), (
+        "No data point found with the expected Arrow value"
+    )
+    print(f"\nFound {len(data_points)} data points for metric '{test_metric_name}'")
     for point in data_points:
         print(
             f"- {point.name}: {point.value_double or point.value_string} at {point.time}"
@@ -124,9 +118,7 @@ def main() -> None:
     assert len(spans) > 0, "No spans found for the metric"
     print(f"Found {len(spans)} spans")
     for span in spans:
-        print(
-            f"- Value: {span.value} from {span.raw_start_at} to {span.raw_end_at}"
-        )
+        print(f"- Value: {span.value} from {span.raw_start_at} to {span.raw_end_at}")
 
     print("\nAll operations completed successfully.")
 

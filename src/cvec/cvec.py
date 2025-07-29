@@ -77,9 +77,7 @@ class CVec:
             raise ValueError("API key must start with 'cva_'")
 
         if len(self._api_key) != 40:  # cva_ + 36 62-base encoded symbols
-            raise ValueError(
-                "API key invalid length. Expected cva_ + 36 symbols."
-            )
+            raise ValueError("API key invalid length. Expected cva_ + 36 symbols.")
 
         # Extract 4 characters after "cva_"
         key_id = self._api_key[4:8]
@@ -120,11 +118,7 @@ class CVec:
         )
 
         # If we get a 401 and we have Supabase tokens, try to refresh and retry
-        if (
-            response.status_code == 401
-            and self._access_token
-            and self._refresh_token
-        ):
+        if response.status_code == 401 and self._access_token and self._refresh_token:
             try:
                 self._refresh_supabase_token()
                 # Update headers with new token
@@ -224,16 +218,13 @@ class CVec:
             "names": ",".join(names) if names else None,
         }
 
-        endpoint = (
-            "/api/metrics/data/arrow" if use_arrow else "/api/metrics/data"
-        )
+        endpoint = "/api/metrics/data/arrow" if use_arrow else "/api/metrics/data"
         response_data = self._make_request("GET", endpoint, params=params)
 
         if use_arrow:
             return arrow_to_metric_data_points(response_data)
         return [
-            MetricDataPoint.model_validate(point_data)
-            for point_data in response_data
+            MetricDataPoint.model_validate(point_data) for point_data in response_data
         ]
 
     def get_metric_arrow(
@@ -283,13 +274,8 @@ class CVec:
             "end_at": _end_at.isoformat() if _end_at else None,
         }
 
-        response_data = self._make_request(
-            "GET", "/api/metrics/", params=params
-        )
-        return [
-            Metric.model_validate(metric_data)
-            for metric_data in response_data
-        ]
+        response_data = self._make_request("GET", "/api/metrics/", params=params)
+        return [Metric.model_validate(metric_data) for metric_data in response_data]
 
     def add_metric_data(
         self,
@@ -303,9 +289,7 @@ class CVec:
             data_points: List of MetricDataPoint objects to add
             use_arrow: If True, uses Arrow format for data transfer (more efficient for large datasets)
         """
-        endpoint = (
-            "/api/metrics/data/arrow" if use_arrow else "/api/metrics/data"
-        )
+        endpoint = "/api/metrics/data/arrow" if use_arrow else "/api/metrics/data"
 
         if use_arrow:
             arrow_data = metric_data_points_to_arrow(data_points)
@@ -313,9 +297,7 @@ class CVec:
                 "POST",
                 endpoint,
                 data=arrow_data,
-                headers={
-                    "Content-Type": "application/vnd.apache.arrow.stream"
-                },
+                headers={"Content-Type": "application/vnd.apache.arrow.stream"},
             )
         else:
             data_dicts: List[Dict[str, Any]] = [
@@ -331,9 +313,7 @@ class CVec:
             email: User email
             password: User password
         """
-        supabase_url = (
-            f"{self.host}/supabase/auth/v1/token?grant_type=password"
-        )
+        supabase_url = f"{self.host}/supabase/auth/v1/token?grant_type=password"
 
         payload = {"email": email, "password": password}
 
@@ -357,9 +337,7 @@ class CVec:
         if not self._refresh_token:
             raise ValueError("No refresh token available")
 
-        supabase_url = (
-            f"{self.host}/supabase/auth/v1/token?grant_type=refresh_token"
-        )
+        supabase_url = f"{self.host}/supabase/auth/v1/token?grant_type=refresh_token"
 
         payload = {"refresh_token": self._refresh_token}
 
@@ -394,15 +372,11 @@ class CVec:
             publishable_key = config_data.get("supabasePublishableKey")
 
             if not publishable_key:
-                raise ValueError(
-                    f"Configuration fetched from {config_url} is invalid"
-                )
+                raise ValueError(f"Configuration fetched from {config_url} is invalid")
 
             return str(publishable_key)
 
         except requests.RequestException as e:
-            raise ValueError(
-                f"Failed to fetch config from {self.host}/config: {e}"
-            )
+            raise ValueError(f"Failed to fetch config from {self.host}/config: {e}")
         except (KeyError, ValueError) as e:
             raise ValueError(f"Invalid config response: {e}")
