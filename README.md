@@ -115,6 +115,34 @@ Example output:
 [46257 rows x 4 columns]
 ```
 
+### Adding Metric Data
+
+To add new metric data points, you create a list of `MetricDataPoint` objects and pass them to `add_metric_data`. Each `MetricDataPoint` should have a `name`, a `time`, and either a `value_double` (for numeric values) or a `value_string` (for string values).
+
+```python
+from datetime import datetime
+from cvec.models import MetricDataPoint
+
+# Assuming 'cvec' client is already initialized
+
+# Create some data points
+data_points = [
+    MetricDataPoint(
+        name="mygroup/myedge/compressor01/stage1/temp_out/c",
+        time=datetime(2025, 7, 29, 10, 0, 0),
+        value_double=25.5,
+    ),
+    MetricDataPoint(
+        name="mygroup/myedge/compressor01/status",
+        time=datetime(2025, 7, 29, 10, 0, 5),
+        value_string="running",
+    ),
+]
+
+# Add the data points to CVec
+cvec.add_metric_data(data_points)
+```
+
 # CVec Class
 
 The SDK provides an API client class named `CVec` with the following functions.
