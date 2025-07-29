@@ -5,11 +5,7 @@ import os
 def main() -> None:
     cvec = CVec(
         host=os.environ.get("CVEC_HOST", "https://your-subdomain.cvector.dev"),
-        email=os.environ.get("CVEC_EMAIL", "your-email@cvector.app"),
-        password=os.environ.get("CVEC_PASSWORD", "your-password"),
-        publishable_key=os.environ.get(
-            "CVEC_PUBLISHABLE_KEY", "your-cvec-publishable-key"
-        ),
+        api_key=os.environ.get("CVEC_API_KEY", "your-api-key"),
     )
     test_metric_name = "python-sdk/test"
     print("\nGetting metric data as objects...")
