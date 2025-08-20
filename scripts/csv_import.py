@@ -72,17 +72,13 @@ def import_csv(
         if not reader.fieldnames:
             raise ValueError("CSV file appears to be empty or malformed")
 
-        # Validate that timestamp column exists (case-insensitive)
-        fieldnames_lower = [col.lower() for col in reader.fieldnames]
-        if "timestamp" not in fieldnames_lower:
+        # Find the timestamp column (case-insensitive)
+        try:
+            timestamp_col = next(
+                col for col in reader.fieldnames if col.lower() == "timestamp"
+            )
+        except StopIteration:
             raise ValueError("CSV must have a 'timestamp' column")
-
-        # Find the actual timestamp column name
-        timestamp_col = None
-        for col in reader.fieldnames:
-            if col.lower() == "timestamp":
-                timestamp_col = col
-                break
 
         # Get metric names (all columns except timestamp)
         metric_names = [col for col in reader.fieldnames if col != timestamp_col]
@@ -156,7 +152,7 @@ Example usage:
 CSV format:
   The CSV must have a header row with 'timestamp' as the first column.
   Subsequent columns are treated as metric names.
-  
+
   Example:
     timestamp,rain_rate,actual_inflow,predicted_inflow
     2025-01-01 00:00:00,0.5,100.2,95.8
