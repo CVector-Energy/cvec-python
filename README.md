@@ -143,6 +143,57 @@ data_points = [
 cvec.add_metric_data(data_points)
 ```
 
+## CSV Import Tool
+
+The repository includes a command-line script for importing CSV data into CVec. The script is located at `scripts/csv_import.py`.
+
+### Usage
+
+```bash
+python scripts/csv_import.py [options] csv_file
+```
+
+### Options
+
+- `csv_file`: Path to the CSV file to import (required)
+- `--prefix PREFIX`: Prefix to add to metric names (separated by '/')
+- `--host HOST`: CVec host URL (overrides CVEC_HOST environment variable)
+- `--api-key API_KEY`: CVec API key (overrides CVEC_API_KEY environment variable)
+
+### CSV Format
+
+The CSV file must have:
+- A header row with column names
+- A timestamp column (case-insensitive: "timestamp", "Timestamp", etc.)
+- One or more metric columns
+
+Example CSV:
+```csv
+timestamp,rain_rate,actual_inflow,predicted_inflow
+2025-01-01 00:00:00,0.5,100.2,95.8
+2025-01-01 01:00:00,1.2,150.5,145.3
+2025-01-01 02:00:00,0.8,120.1,118.7
+```
+
+### Examples
+
+```bash
+# Basic import
+python scripts/csv_import.py data.csv
+
+# Add prefix to metric names (rain_rate becomes "weather/rain_rate")
+python scripts/csv_import.py data.csv --prefix "weather"
+
+# Specify CVec connection details
+python scripts/csv_import.py data.csv --host "https://your-cvec-host.com" --api-key "your-api-key"
+```
+
+The script automatically:
+- Detects numeric vs string values
+- Supports multiple timestamp formats
+- Provides detailed progress information
+- Handles errors gracefully
+
 # CVec Class
 
 The SDK provides an API client class named `CVec` with the following functions.
