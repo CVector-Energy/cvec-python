@@ -11,6 +11,12 @@ from cvec.utils.arrow_converter import (
     arrow_to_metric_data_points,
     metric_data_points_to_arrow,
 )
+from cvec.models.modeling import (
+    FetchModelingReadingsRequest,
+    ModelingReadingsDataResponse,
+    LatestReadingsRequest,
+    LatestReadingsResponse,
+)
 
 
 class CVec:
@@ -304,6 +310,59 @@ class CVec:
                 point.model_dump(mode="json") for point in data_points
             ]
             self._make_request("POST", endpoint, json=data_dicts)  # type: ignore[arg-type]
+
+    def get_modeling_readings(
+        self,
+        tag_ids: List[int],
+        start_at: Optional[datetime] = None,
+        end_at: Optional[datetime] = None,
+        desired_points: int = 10000,
+    ) -> ModelingReadingsDataResponse:
+        """
+        Fetch modeling readings for chosen tags.
+        Perform aggregation to desired count and downsampling via TimescaleDB mechanisms.
+
+        Args:
+            tag_ids: Tag ID list to fetch data for
+            start_at: Optional start time for the query (uses class default if not specified)
+            end_at: Optional end time for the query (uses class default if not specified)
+            desired_points: Number of data points to return (default: 10000)
+
+        Returns:
+            ModelingReadingsDataResponse containing readings for each tag
+        """
+        _start_at = start_at or self.default_start_at
+        _end_at = end_at or self.default_end_at
+
+        request_data = FetchModelingReadingsRequest(
+            tag_ids=tag_ids,
+            start_date=_start_at,
+            end_date=_end_at,
+            desired_points=desired_points,
+        )
+
+        response_data = self._make_request(
+            "POST", "/api/modeling/fetch_modeling_data", json=request_data.model_dump(mode="json")
+        )
+        print(response_data)
+        return ModelingReadingsDataResponse.model_validate(response_data)
+
+    def get_modeling_latest_readings(self, tag_ids: List[int]) -> LatestReadingsResponse:
+        """
+        Fetch single latest reading for each of specified tag IDs from the modeling database.
+
+        Args:
+            tag_ids: List of tag IDs to fetch data for
+
+        Returns:
+            LatestReadingsResponse containing latest readings
+        """
+        request_data = LatestReadingsRequest(tag_ids=tag_ids)
+
+        response_data = self._make_request(
+            "POST", "/api/modeling/fetch_latest_readings", json=request_data.model_dump(mode="json")
+        )
+        return LatestReadingsResponse.model_validate(response_data)
 
     def _login_with_supabase(self, email: str, password: str) -> None:
         """
