@@ -11,12 +11,6 @@ from cvec.utils.arrow_converter import (
     arrow_to_metric_data_points,
     metric_data_points_to_arrow,
 )
-from cvec.models.modeling import (
-    FetchModelingReadingsRequest,
-    ModelingReadingsDataResponse,
-    LatestReadingsRequest,
-    LatestReadingsResponse,
-)
 
 
 class CVec:
@@ -311,58 +305,96 @@ class CVec:
             ]
             self._make_request("POST", endpoint, json=data_dicts)  # type: ignore[arg-type]
 
-    def get_modeling_readings(
+    def get_modeling_metrics(
         self,
-        tag_ids: List[int],
         start_at: Optional[datetime] = None,
         end_at: Optional[datetime] = None,
-        desired_points: int = 10000,
-    ) -> ModelingReadingsDataResponse:
+    ) -> List[Metric]:
         """
-        Fetch modeling readings for chosen tags.
-        Perform aggregation to desired count and downsampling via TimescaleDB mechanisms.
+        Return a list of modeling metrics that had at least one transition in the given [start_at, end_at) interval.
+        All metrics are returned if no start_at and end_at are given.
 
         Args:
-            tag_ids: Tag ID list to fetch data for
             start_at: Optional start time for the query (uses class default if not specified)
             end_at: Optional end time for the query (uses class default if not specified)
-            desired_points: Number of data points to return (default: 10000)
 
         Returns:
-            ModelingReadingsDataResponse containing readings for each tag
+            List of Metric objects containing modeling metrics
         """
         _start_at = start_at or self.default_start_at
         _end_at = end_at or self.default_end_at
 
-        request_data = FetchModelingReadingsRequest(
-            tag_ids=tag_ids,
-            start_date=_start_at,
-            end_date=_end_at,
-            desired_points=desired_points,
-        )
+        params: Dict[str, Any] = {
+            "start_at": _start_at.isoformat() if _start_at else None,
+            "end_at": _end_at.isoformat() if _end_at else None,
+        }
 
         response_data = self._make_request(
-            "POST", "/api/modeling/fetch_modeling_data", json=request_data.model_dump(mode="json")
+            "GET", "/api/modeling/metrics", params=params
         )
-        print(response_data)
-        return ModelingReadingsDataResponse.model_validate(response_data)
+        return [Metric.model_validate(metric_data) for metric_data in response_data]
 
-    def get_modeling_latest_readings(self, tag_ids: List[int]) -> LatestReadingsResponse:
+    def get_modeling_metrics_data(
+        self,
+        names: Optional[List[str]] = None,
+        start_at: Optional[datetime] = None,
+        end_at: Optional[datetime] = None,
+    ) -> List[MetricDataPoint]:
         """
-        Fetch single latest reading for each of specified tag IDs from the modeling database.
+        Return all data-points within a given [start_at, end_at) interval,
+        optionally selecting a given list of modeling metric names.
+        Returns a list of MetricDataPoint objects, one for each metric value transition.
 
         Args:
-            tag_ids: List of tag IDs to fetch data for
-
-        Returns:
-            LatestReadingsResponse containing latest readings
+            names: Optional list of modeling metric names to filter by
+            start_at: Optional start time for the query
+            end_at: Optional end time for the query
         """
-        request_data = LatestReadingsRequest(tag_ids=tag_ids)
+        _start_at = start_at or self.default_start_at
+        _end_at = end_at or self.default_end_at
+
+        params: Dict[str, Any] = {
+            "start_at": _start_at.isoformat() if _start_at else None,
+            "end_at": _end_at.isoformat() if _end_at else None,
+            "names": ",".join(names) if names else None,
+        }
 
         response_data = self._make_request(
-            "POST", "/api/modeling/fetch_latest_readings", json=request_data.model_dump(mode="json")
+            "GET", "/api/modeling/metrics/data", params=params
         )
-        return LatestReadingsResponse.model_validate(response_data)
+        return [
+            MetricDataPoint.model_validate(point_data) for point_data in response_data
+        ]
+
+    def get_modeling_metrics_data_arrow(
+        self,
+        names: Optional[List[str]] = None,
+        start_at: Optional[datetime] = None,
+        end_at: Optional[datetime] = None,
+    ) -> bytes:
+        """
+        Return all data-points within a given [start_at, end_at) interval,
+        optionally selecting a given list of modeling metric names.
+        Returns Arrow IPC format data that can be read using pyarrow.ipc.open_file.
+
+        Args:
+            names: Optional list of modeling metric names to filter by
+            start_at: Optional start time for the query
+            end_at: Optional end time for the query
+        """
+        _start_at = start_at or self.default_start_at
+        _end_at = end_at or self.default_end_at
+
+        params: Dict[str, Any] = {
+            "start_at": _start_at.isoformat() if _start_at else None,
+            "end_at": _end_at.isoformat() if _end_at else None,
+            "names": ",".join(names) if names else None,
+        }
+
+        endpoint = "/api/modeling/metrics/data/arrow"
+        result = self._make_request("GET", endpoint, params=params)
+        assert isinstance(result, bytes)
+        return result
 
     def _login_with_supabase(self, email: str, password: str) -> None:
         """
