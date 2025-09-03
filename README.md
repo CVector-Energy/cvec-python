@@ -233,7 +233,7 @@ Add multiple metric data points to the database.
 
 Return a list of metrics that had at least one transition in the given [`start_at`, `end_at`) interval. All metrics are returned if no `start_at` and `end_at` are given.
 
-## `get_modeling_metrics(start_at, end_at)`
+## `get_modeling_metrics(?start_at, ?end_at)`
 
 Fetch modeling metrics from the modeling database. This method returns a list of available modeling metrics that had transitions in the specified time range.
 
@@ -242,7 +242,7 @@ Fetch modeling metrics from the modeling database. This method returns a list of
 
 Returns a list of `Metric` objects containing modeling metrics.
 
-## `get_modeling_metrics_data(names, start_at, end_at)`
+## `get_modeling_metrics_data(?names, ?start_at, ?end_at)`
 
 Fetch actual data values from modeling metrics within a time range. This method returns the actual data points (values) for the specified modeling metrics, similar to `get_metric_data()` but for the modeling database.
 
@@ -252,7 +252,7 @@ Fetch actual data values from modeling metrics within a time range. This method 
 
 Returns a list of `MetricDataPoint` objects containing the actual data values.
 
-## `get_modeling_metrics_data_arrow(names, start_at, end_at)`
+## `get_modeling_metrics_data_arrow(?names, ?start_at, ?end_at)`
 
 Fetch actual data values from modeling metrics within a time range in Apache Arrow format. This method returns the actual data points (values) for the specified modeling metrics in Arrow IPC format, which is more efficient for large datasets.
 
