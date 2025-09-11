@@ -305,6 +305,97 @@ class CVec:
             ]
             self._make_request("POST", endpoint, json=data_dicts)  # type: ignore[arg-type]
 
+    def get_modeling_metrics(
+        self,
+        start_at: Optional[datetime] = None,
+        end_at: Optional[datetime] = None,
+    ) -> List[Metric]:
+        """
+        Return a list of modeling metrics that had at least one transition in the given [start_at, end_at) interval.
+        All metrics are returned if no start_at and end_at are given.
+
+        Args:
+            start_at: Optional start time for the query (uses class default if not specified)
+            end_at: Optional end time for the query (uses class default if not specified)
+
+        Returns:
+            List of Metric objects containing modeling metrics
+        """
+        _start_at = start_at or self.default_start_at
+        _end_at = end_at or self.default_end_at
+
+        params: Dict[str, Any] = {
+            "start_at": _start_at.isoformat() if _start_at else None,
+            "end_at": _end_at.isoformat() if _end_at else None,
+        }
+
+        response_data = self._make_request(
+            "GET", "/api/modeling/metrics", params=params
+        )
+        return [Metric.model_validate(metric_data) for metric_data in response_data]
+
+    def get_modeling_metrics_data(
+        self,
+        names: Optional[List[str]] = None,
+        start_at: Optional[datetime] = None,
+        end_at: Optional[datetime] = None,
+    ) -> List[MetricDataPoint]:
+        """
+        Return all data-points within a given [start_at, end_at) interval,
+        optionally selecting a given list of modeling metric names.
+        Returns a list of MetricDataPoint objects, one for each metric value transition.
+
+        Args:
+            names: Optional list of modeling metric names to filter by
+            start_at: Optional start time for the query
+            end_at: Optional end time for the query
+        """
+        _start_at = start_at or self.default_start_at
+        _end_at = end_at or self.default_end_at
+
+        params: Dict[str, Any] = {
+            "start_at": _start_at.isoformat() if _start_at else None,
+            "end_at": _end_at.isoformat() if _end_at else None,
+            "names": ",".join(names) if names else None,
+        }
+
+        response_data = self._make_request(
+            "GET", "/api/modeling/metrics/data", params=params
+        )
+        return [
+            MetricDataPoint.model_validate(point_data) for point_data in response_data
+        ]
+
+    def get_modeling_metrics_data_arrow(
+        self,
+        names: Optional[List[str]] = None,
+        start_at: Optional[datetime] = None,
+        end_at: Optional[datetime] = None,
+    ) -> bytes:
+        """
+        Return all data-points within a given [start_at, end_at) interval,
+        optionally selecting a given list of modeling metric names.
+        Returns Arrow IPC format data that can be read using pyarrow.ipc.open_file.
+
+        Args:
+            names: Optional list of modeling metric names to filter by
+            start_at: Optional start time for the query
+            end_at: Optional end time for the query
+        """
+        _start_at = start_at or self.default_start_at
+        _end_at = end_at or self.default_end_at
+
+        params: Dict[str, Any] = {
+            "start_at": _start_at.isoformat() if _start_at else None,
+            "end_at": _end_at.isoformat() if _end_at else None,
+            "names": ",".join(names) if names else None,
+        }
+
+        endpoint = "/api/modeling/metrics/data/arrow"
+        result = self._make_request("GET", endpoint, params=params)
+        assert isinstance(result, bytes)
+        return result
+
     def _login_with_supabase(self, email: str, password: str) -> None:
         """
         Login to Supabase and get access/refresh tokens.
