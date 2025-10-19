@@ -12,6 +12,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
+import requests
 
 from cvec import CVec
 from cvec.models.metric import MetricDataPoint
@@ -30,6 +31,7 @@ def parse_timestamp(timestamp_str: str) -> datetime:
         "%Y-%m-%d",
         "%m/%d/%Y %H:%M:%S",
         "%m/%d/%Y",
+        "%m/%d/%y %H:%M",
     ]
 
     for fmt in formats:
@@ -209,6 +211,14 @@ CSV format:
             metric_prefix=args.prefix,
         )
 
+    except requests.HTTPError as e:
+        print(f"Error: {e}")
+        # Display CloudFront ID if available
+        if e.response is not None:
+            cf_id = e.response.headers.get("x-amz-cf-id")
+            if cf_id:
+                print(f"Cf-Id: {cf_id}")
+        sys.exit(1)
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)

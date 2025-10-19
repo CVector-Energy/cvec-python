@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
-import requests  # type: ignore[import-untyped]
+import requests
 
 from cvec.models.metric import Metric, MetricDataPoint
 from cvec.models.span import Span

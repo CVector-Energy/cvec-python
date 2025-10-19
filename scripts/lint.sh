@@ -6,6 +6,14 @@ set -e
 
 TARGET=${1:-.}
 
-poetry run ruff check --fix "$TARGET"
-poetry run ruff format "$TARGET"
-poetry run mypy --strict "$TARGET"
+echo -e "poetry run ruff check --fix" "$@"
+poetry run ruff check --fix "$@"
+
+echo -e "\npoetry run ruff format" "$@"
+poetry run ruff format "$@"
+
+echo -e "\nrun mypy --strict" "$@"
+poetry run mypy --strict "$@"
+
+echo -e "\npoetry run pytest"
+poetry run pytest

@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r .tool_input.file_path | { read file_path; if echo \"$file_path\" | grep -qE \"\\.(py)$\"; then scripts/lint.sh \"$file_path\"; fi; }"
+          }
+        ]
+      }
+    ]
+  }
+}
