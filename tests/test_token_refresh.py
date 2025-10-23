@@ -1,5 +1,4 @@
 """Tests for token refresh functionality."""
-import pytest
 from unittest.mock import Mock, patch
 from cvec import CVec
 from typing import Any
