@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -11,6 +12,8 @@ from cvec.utils.arrow_converter import (
     arrow_to_metric_data_points,
     metric_data_points_to_arrow,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CVec:
@@ -91,6 +94,7 @@ class CVec:
         return {
             "Authorization": f"Bearer {self._access_token}",
             "Content-Type": "application/json",
+            "Accept": "application/json",
         }
 
     def _make_request(
@@ -117,7 +121,6 @@ class CVec:
             data=data,
         )
 
-        # If we get a 401 and we have Supabase tokens, try to refresh and retry
         if response.status_code == 401 and self._access_token and self._refresh_token:
             try:
                 self._refresh_supabase_token()
@@ -135,9 +138,14 @@ class CVec:
                     json=json,
                     data=data,
                 )
-            except Exception:
-                print("Token refresh failed")
-                # If refresh fails, continue with the original error
+            except (requests.RequestException, ValueError, KeyError) as e:
+                logger.warning(
+                    "Token refresh failed, continuing with original request: %s",
+                    e,
+                    exc_info=True,
+                )
+                # If refresh fails, continue with the original error response
+                # which will be raised by raise_for_status() below
                 pass
 
         response.raise_for_status()
@@ -410,6 +418,7 @@ class CVec:
 
         headers = {
             "Content-Type": "application/json",
+            "Accept": "application/json",
             "apikey": self._publishable_key,
         }
 
@@ -434,6 +443,7 @@ class CVec:
 
         headers = {
             "Content-Type": "application/json",
+            "Accept": "application/json",
             "apikey": self._publishable_key,
         }
 
