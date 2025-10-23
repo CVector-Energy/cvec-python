@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -11,6 +12,8 @@ from cvec.utils.arrow_converter import (
     arrow_to_metric_data_points,
     metric_data_points_to_arrow,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CVec:
@@ -144,9 +147,14 @@ class CVec:
                     data=data,
                     allow_redirects=False,
                 )
-            except Exception as e:
-                print(f"Token refresh failed: {e}")
-                # If refresh fails, continue with the original error
+            except (requests.RequestException, ValueError, KeyError) as e:
+                logger.warning(
+                    "Token refresh failed, continuing with original request: %s",
+                    e,
+                    exc_info=True,
+                )
+                # If refresh fails, continue with the original error response
+                # which will be raised by raise_for_status() below
                 pass
 
         if response.status_code in (301, 302, 303, 307, 308):
