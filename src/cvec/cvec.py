@@ -115,10 +115,18 @@ class CVec:
             params=params,
             json=json,
             data=data,
+            allow_redirects=False,  # Disable auto-redirect to catch auth redirects
         )
 
-        # If we get a 401 and we have Supabase tokens, try to refresh and retry
-        if response.status_code == 401 and self._access_token and self._refresh_token:
+        needs_refresh = False
+        if response.status_code == 401:
+            needs_refresh = True
+        elif response.status_code in (301, 302, 303, 307, 308):
+            location = response.headers.get("Location", "")
+            if "login" in location.lower() or "token" in location.lower():
+                needs_refresh = True
+
+        if needs_refresh and self._access_token and self._refresh_token:
             try:
                 self._refresh_supabase_token()
                 # Update headers with new token
@@ -134,11 +142,23 @@ class CVec:
                     params=params,
                     json=json,
                     data=data,
+                    allow_redirects=False,
                 )
-            except Exception:
-                print("Token refresh failed")
+            except Exception as e:
+                print(f"Token refresh failed: {e}")
                 # If refresh fails, continue with the original error
                 pass
+
+        if response.status_code in (301, 302, 303, 307, 308):
+            response = requests.request(
+                method="GET" if response.status_code == 303 else method,
+                url=urljoin(url, response.headers.get("Location", "")),
+                headers=request_headers,
+                params=params if method == "GET" else None,
+                json=json if method != "GET" and response.status_code != 303 else None,
+                data=data if method != "GET" and response.status_code != 303 else None,
+                allow_redirects=True,
+            )
 
         response.raise_for_status()
 
