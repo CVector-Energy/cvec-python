@@ -1,6 +1,6 @@
 [project]
 name = "cvec"
-version = "1.0.1"
+version = "1.0.2"
 description = "SDK for CVector Energy"
 authors = [{ name = "CVector", email = "support@cvector.energy" }]
 readme = "README.md"
