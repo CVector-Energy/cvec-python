@@ -426,6 +426,9 @@ class CVec:
             email: User email
             password: User password
         """
+        if not self._publishable_key:
+            raise ValueError("Publishable key not available")
+
         supabase_url = f"{self.host}/supabase/auth/v1/token?grant_type=password"
 
         payload = {"email": email, "password": password}
@@ -452,6 +455,8 @@ class CVec:
         """
         if not self._refresh_token:
             raise ValueError("No refresh token available")
+        if not self._publishable_key:
+            raise ValueError("Publishable key not available")
 
         supabase_url = f"{self.host}/supabase/auth/v1/token?grant_type=refresh_token"
 
