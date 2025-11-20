@@ -1,9 +1,10 @@
 """Tests for token refresh functionality."""
 
-import pytest
 from typing import Any
 from unittest.mock import Mock, patch
 from urllib.error import HTTPError
+
+import pytest
 
 from cvec import CVec
 
@@ -35,7 +36,7 @@ class TestTokenRefresh:
             code=401,
             msg="Unauthorized",
             hdrs={},  # type: ignore[arg-type]
-            fp=None,  # type: ignore[arg-type]
+            fp=None,
         )
 
         # Mock successful response after refresh
@@ -92,7 +93,7 @@ class TestTokenRefresh:
             code=401,
             msg="Unauthorized",
             hdrs={},  # type: ignore[arg-type]
-            fp=None,  # type: ignore[arg-type]
+            fp=None,
         )
 
         mock_urlopen.side_effect = http_error_401
@@ -133,7 +134,7 @@ class TestTokenRefresh:
             code=401,
             msg="Unauthorized",
             hdrs={},  # type: ignore[arg-type]
-            fp=None,  # type: ignore[arg-type]
+            fp=None,
         )
 
         mock_urlopen.side_effect = http_error_401
