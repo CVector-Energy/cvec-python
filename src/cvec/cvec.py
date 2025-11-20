@@ -1,10 +1,11 @@
+import json
 import logging
 import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from urllib.parse import urljoin
-
-import requests
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode, urljoin
+from urllib.request import Request, urlopen
 
 from cvec.models.metric import Metric, MetricDataPoint
 from cvec.models.span import Span
@@ -102,60 +103,73 @@ class CVec:
         method: str,
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
-        json: Optional[Dict[str, Any]] = None,
+        json_data: Optional[Dict[str, Any]] = None,
         data: Optional[bytes] = None,
         headers: Optional[Dict[str, str]] = None,
     ) -> Any:
         """Helper method to make HTTP requests."""
         url = urljoin(self.host or "", endpoint)
+
+        if params:
+            filtered_params = {k: v for k, v in params.items() if v is not None}
+            if filtered_params:
+                url = f"{url}?{urlencode(filtered_params)}"
+
         request_headers = self._get_headers()
         if headers:
             request_headers.update(headers)
 
-        response = requests.request(
-            method=method,
-            url=url,
-            headers=request_headers,
-            params=params,
-            json=json,
-            data=data,
-        )
+        request_body = None
+        if json_data is not None:
+            request_body = json.dumps(json_data).encode("utf-8")
+        elif data is not None:
+            request_body = data
 
-        if response.status_code == 401 and self._access_token and self._refresh_token:
-            try:
-                self._refresh_supabase_token()
-                # Update headers with new token
-                request_headers = self._get_headers()
-                if headers:
-                    request_headers.update(headers)
+        def make_http_request() -> Any:
+            """Inner function to make the actual HTTP request."""
+            req = Request(
+                url, data=request_body, headers=request_headers, method=method
+            )
+            with urlopen(req) as response:
+                response_data = response.read()
+                content_type = response.headers.get("content-type", "")
 
-                # Retry the request
-                response = requests.request(
-                    method=method,
-                    url=url,
-                    headers=request_headers,
-                    params=params,
-                    json=json,
-                    data=data,
-                )
-            except (requests.RequestException, ValueError, KeyError) as e:
-                logger.warning(
-                    "Token refresh failed, continuing with original request: %s",
-                    e,
-                    exc_info=True,
-                )
-                # If refresh fails, continue with the original error response
-                # which will be raised by raise_for_status() below
-                pass
+                if content_type == "application/vnd.apache.arrow.stream":
+                    return response_data
+                return json.loads(response_data.decode("utf-8"))
 
-        response.raise_for_status()
+        try:
+            return make_http_request()
+        except HTTPError as e:
+            # Handle 401 Unauthorized with token refresh
+            if e.code == 401 and self._access_token and self._refresh_token:
+                try:
+                    self._refresh_supabase_token()
+                    # Update headers with new token
+                    request_headers = self._get_headers()
+                    if headers:
+                        request_headers.update(headers)
 
-        if (
-            response.headers.get("content-type")
-            == "application/vnd.apache.arrow.stream"
-        ):
-            return response.content
-        return response.json()
+                    # Retry the request
+                    req = Request(
+                        url, data=request_body, headers=request_headers, method=method
+                    )
+                    with urlopen(req) as response:
+                        response_data = response.read()
+                        content_type = response.headers.get("content-type", "")
+
+                        if content_type == "application/vnd.apache.arrow.stream":
+                            return response_data
+                        return json.loads(response_data.decode("utf-8"))
+                except (HTTPError, URLError, ValueError, KeyError) as refresh_error:
+                    logger.warning(
+                        "Token refresh failed, continuing with original request: %s",
+                        refresh_error,
+                        exc_info=True,
+                    )
+                    # If refresh fails, re-raise the original 401 error
+                    raise e
+            raise
 
     def get_spans(
         self,
@@ -311,7 +325,7 @@ class CVec:
             data_dicts: List[Dict[str, Any]] = [
                 point.model_dump(mode="json") for point in data_points
             ]
-            self._make_request("POST", endpoint, json=data_dicts)  # type: ignore[arg-type]
+            self._make_request("POST", endpoint, json_data=data_dicts)  # type: ignore[arg-type]
 
     def get_modeling_metrics(
         self,
@@ -422,10 +436,12 @@ class CVec:
             "apikey": self._publishable_key,
         }
 
-        response = requests.post(supabase_url, json=payload, headers=headers)
-        response.raise_for_status()
+        request_body = json.dumps(payload).encode("utf-8")
+        req = Request(supabase_url, data=request_body, headers=headers, method="POST")
 
-        data = response.json()
+        with urlopen(req) as response:
+            response_data = response.read()
+            data = json.loads(response_data.decode("utf-8"))
 
         self._access_token = data["access_token"]
         self._refresh_token = data["refresh_token"]
@@ -447,10 +463,13 @@ class CVec:
             "apikey": self._publishable_key,
         }
 
-        response = requests.post(supabase_url, json=payload, headers=headers)
-        response.raise_for_status()
+        request_body = json.dumps(payload).encode("utf-8")
+        req = Request(supabase_url, data=request_body, headers=headers, method="POST")
 
-        data = response.json()
+        with urlopen(req) as response:
+            response_data = response.read()
+            data = json.loads(response_data.decode("utf-8"))
+
         self._access_token = data["access_token"]
         self._refresh_token = data["refresh_token"]
 
@@ -466,10 +485,12 @@ class CVec:
         """
         try:
             config_url = f"{self.host}/config"
-            response = requests.get(config_url)
-            response.raise_for_status()
+            req = Request(config_url, method="GET")
 
-            config_data = response.json()
+            with urlopen(req) as response:
+                response_data = response.read()
+                config_data = json.loads(response_data.decode("utf-8"))
+
             publishable_key = config_data.get("supabasePublishableKey")
 
             if not publishable_key:
@@ -477,7 +498,7 @@ class CVec:
 
             return str(publishable_key)
 
-        except requests.RequestException as e:
+        except (HTTPError, URLError) as e:
             raise ValueError(f"Failed to fetch config from {self.host}/config: {e}")
         except (KeyError, ValueError) as e:
             raise ValueError(f"Invalid config response: {e}")
