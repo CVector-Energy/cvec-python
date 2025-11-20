@@ -12,6 +12,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
+from urllib.error import HTTPError
 
 from cvec import CVec
 from cvec.models.metric import MetricDataPoint
