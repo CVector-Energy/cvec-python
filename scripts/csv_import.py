@@ -12,7 +12,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
-import requests
+from urllib.error import HTTPError
 
 from cvec import CVec
 from cvec.models.metric import MetricDataPoint
@@ -211,11 +211,11 @@ CSV format:
             metric_prefix=args.prefix,
         )
 
-    except requests.HTTPError as e:
+    except HTTPError as e:
         print(f"Error: {e}")
         # Display CloudFront ID if available
-        if e.response is not None:
-            cf_id = e.response.headers.get("x-amz-cf-id")
+        if hasattr(e, "headers"):
+            cf_id = e.headers.get("x-amz-cf-id")
             if cf_id:
                 print(f"Cf-Id: {cf_id}")
         sys.exit(1)
