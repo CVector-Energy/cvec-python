@@ -6,7 +6,6 @@ authors = [{ name = "CVector", email = "support@cvector.energy" }]
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "requests (>=2.32.3,<3.0.0)",
     "pydantic>=2.7.0,<3.0.0",
     "pyarrow>=18.0.0,<20.0.0",
 ]
@@ -19,7 +18,6 @@ packages = [{ include = "cvec", from = "src" }]
 pytest = "^8.3.5"
 mypy = "^1.15.0"
 ruff = "^0.11.10"
-types-requests = "^2.32.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

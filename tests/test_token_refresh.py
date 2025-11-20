@@ -1,9 +1,10 @@
 """Tests for token refresh functionality."""
 
-import pytest
-import requests
 from typing import Any
 from unittest.mock import Mock, patch
+from urllib.error import HTTPError
+
+import pytest
 
 from cvec import CVec
 
@@ -13,10 +14,10 @@ class TestTokenRefresh:
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
     @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
-    @patch("cvec.cvec.requests.request")
+    @patch("cvec.cvec.urlopen")
     def test_token_refresh_on_401(
         self,
-        mock_request: Any,
+        mock_urlopen: Any,
         mock_fetch_key: Any,
         mock_login: Any,
     ) -> None:
@@ -29,18 +30,24 @@ class TestTokenRefresh:
         client._access_token = "expired_token"
         client._refresh_token = "valid_refresh_token"
 
-        # Mock response sequence
-        mock_response_401 = Mock()
-        mock_response_401.status_code = 401
+        http_error_401 = HTTPError(
+            url="https://test.example.com/api/metrics/",
+            code=401,
+            msg="Unauthorized",
+            hdrs={},  # type: ignore[arg-type]
+            fp=None,
+        )
 
-        mock_response_success = Mock()
-        mock_response_success.status_code = 200
-        mock_response_success.headers = {"content-type": "application/json"}
-        mock_response_success.json.return_value = []
+        # Mock successful response after refresh
+        mock_success_response = Mock()
+        mock_success_response.read.return_value = b"[]"
+        mock_success_response.headers = {"content-type": "application/json"}
+        mock_success_response.__enter__ = Mock(return_value=mock_success_response)
+        mock_success_response.__exit__ = Mock(return_value=False)
 
-        mock_request.side_effect = [
-            mock_response_401,
-            mock_response_success,
+        mock_urlopen.side_effect = [
+            http_error_401,
+            mock_success_response,
         ]
 
         # Mock refresh method
@@ -61,14 +68,16 @@ class TestTokenRefresh:
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
     @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
-    @patch("cvec.cvec.requests.request")
+    @patch("cvec.cvec.urlopen")
     def test_token_refresh_handles_network_errors_gracefully(
         self,
-        mock_request: Any,
+        mock_urlopen: Any,
         mock_fetch_key: Any,
         mock_login: Any,
     ) -> None:
         """Test that network errors during refresh don't crash, returns original error."""
+        from urllib.error import URLError
+
         client = CVec(
             host="https://test.example.com",
             api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
@@ -77,32 +86,35 @@ class TestTokenRefresh:
         client._access_token = "expired_token"
         client._refresh_token = "valid_refresh_token"
 
-        # Mock response: 401 triggers refresh
-        mock_response_401 = Mock()
-        mock_response_401.status_code = 401
-        mock_response_401.raise_for_status.side_effect = requests.HTTPError(
-            "401 Client Error: Unauthorized"
+        # Mock 401 error response
+        http_error_401 = HTTPError(
+            url="https://test.example.com/api/metrics/",
+            code=401,
+            msg="Unauthorized",
+            hdrs={},  # type: ignore[arg-type]
+            fp=None,
         )
 
-        mock_request.return_value = mock_response_401
+        mock_urlopen.side_effect = http_error_401
 
         # Mock refresh to raise network error
         def mock_refresh_with_error() -> None:
-            raise requests.ConnectionError("Network unreachable")
+            raise URLError("Network unreachable")
 
         with patch.object(
             client, "_refresh_supabase_token", side_effect=mock_refresh_with_error
         ):
             # Should not crash, should raise the original 401 error
-            with pytest.raises(requests.HTTPError, match="401"):
+            with pytest.raises(HTTPError) as exc_info:
                 client.get_metrics()
+            assert exc_info.value.code == 401
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
     @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
-    @patch("cvec.cvec.requests.request")
+    @patch("cvec.cvec.urlopen")
     def test_token_refresh_handles_missing_refresh_token(
         self,
-        mock_request: Any,
+        mock_urlopen: Any,
         mock_fetch_key: Any,
         mock_login: Any,
     ) -> None:
@@ -115,14 +127,15 @@ class TestTokenRefresh:
         client._access_token = "expired_token"
         client._refresh_token = "valid_refresh_token"
 
-        # Mock response: 401 triggers refresh
-        mock_response_401 = Mock()
-        mock_response_401.status_code = 401
-        mock_response_401.raise_for_status.side_effect = requests.HTTPError(
-            "401 Client Error: Unauthorized"
+        http_error_401 = HTTPError(
+            url="https://test.example.com/api/metrics/",
+            code=401,
+            msg="Unauthorized",
+            hdrs={},  # type: ignore[arg-type]
+            fp=None,
         )
 
-        mock_request.return_value = mock_response_401
+        mock_urlopen.side_effect = http_error_401
 
         # Mock refresh to raise ValueError (missing refresh token)
         def mock_refresh_with_error() -> None:
@@ -132,5 +145,6 @@ class TestTokenRefresh:
             client, "_refresh_supabase_token", side_effect=mock_refresh_with_error
         ):
             # Should not crash, should raise the original 401 error
-            with pytest.raises(requests.HTTPError, match="401"):
+            with pytest.raises(HTTPError) as exc_info:
                 client.get_metrics()
+            assert exc_info.value.code == 401
