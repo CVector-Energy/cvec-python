@@ -30,7 +30,6 @@ class TestTokenRefresh:
         client._access_token = "expired_token"
         client._refresh_token = "valid_refresh_token"
 
-        # Mock 401 error response
         http_error_401 = HTTPError(
             url="https://test.example.com/api/metrics/",
             code=401,
@@ -128,7 +127,6 @@ class TestTokenRefresh:
         client._access_token = "expired_token"
         client._refresh_token = "valid_refresh_token"
 
-        # Mock 401 error response
         http_error_401 = HTTPError(
             url="https://test.example.com/api/metrics/",
             code=401,
