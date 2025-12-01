@@ -678,6 +678,79 @@ class CVec:
         )
         return [EAVColumn.model_validate(column) for column in response_data]
 
+    def select_from_eav_id(
+        self,
+        tenant_id: int,
+        table_id: str,
+        column_ids: Optional[List[str]] = None,
+        filters: Optional[List[EAVFilter]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Query pivoted data from EAV tables using table and column IDs directly.
+
+        This is the lower-level method that works with IDs. For a more user-friendly
+        interface using names, see select_from_eav().
+
+        Args:
+            tenant_id: The tenant ID to query data for
+            table_id: The UUID of the EAV table to query
+            column_ids: Optional list of column IDs to include in the result.
+                       If None, all columns are returned.
+            filters: Optional list of EAVFilter objects to filter the results.
+                    Each filter must use column_id (not column_name) and can specify:
+                    - column_id: The EAV column ID to filter on (required)
+                    - numeric_min: Minimum numeric value (inclusive)
+                    - numeric_max: Maximum numeric value (exclusive)
+                    - string_value: Exact string value to match
+                    - boolean_value: Boolean value to match
+
+        Returns:
+            List of dictionaries, each representing a row with column values.
+            Each row contains an 'id' field plus fields for each column_id
+            with their corresponding values (number, string, or boolean).
+
+        Example:
+            >>> filters = [
+            ...     EAVFilter(column_id="MTnaC", numeric_min=100, numeric_max=200),
+            ...     EAVFilter(column_id="z09PL", string_value="ACTIVE"),
+            ... ]
+            >>> rows = client.select_from_eav_id(
+            ...     tenant_id=1,
+            ...     table_id="550e8400-e29b-41d4-a716-446655440000",
+            ...     column_ids=["MTnaC", "z09PL", "ZNAGI"],
+            ...     filters=filters,
+            ... )
+        """
+        # Convert EAVFilter objects to dictionaries
+        filters_json: List[Dict[str, Any]] = []
+        if filters:
+            for f in filters:
+                if f.column_id is None:
+                    raise ValueError(
+                        "Filters for select_from_eav_id must use column_id, "
+                        "not column_name"
+                    )
+                filter_dict: Dict[str, Any] = {"column_id": f.column_id}
+                if f.numeric_min is not None:
+                    filter_dict["numeric_min"] = f.numeric_min
+                if f.numeric_max is not None:
+                    filter_dict["numeric_max"] = f.numeric_max
+                if f.string_value is not None:
+                    filter_dict["string_value"] = f.string_value
+                if f.boolean_value is not None:
+                    filter_dict["boolean_value"] = f.boolean_value
+                filters_json.append(filter_dict)
+
+        params: Dict[str, Any] = {
+            "tenant_id": tenant_id,
+            "table_id": table_id,
+            "column_ids": column_ids,
+            "filters": filters_json,
+        }
+
+        response_data = self._call_rpc("select_from_eav", params)
+        return list(response_data) if response_data else []
+
     def select_from_eav(
         self,
         tenant_id: int,
@@ -686,10 +759,10 @@ class CVec:
         filters: Optional[List[EAVFilter]] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Query pivoted data from EAV (Entity-Attribute-Value) tables.
+        Query pivoted data from EAV tables using human-readable names.
 
-        This method calls the app_data.select_from_eav Supabase function to retrieve
-        data from EAV tables with optional column selection and filtering.
+        This method looks up table and column IDs from names, then calls
+        select_from_eav_id(). For direct ID access, use select_from_eav_id().
 
         Args:
             tenant_id: The tenant ID to query data for
@@ -697,7 +770,7 @@ class CVec:
             column_names: Optional list of column names to include in the result.
                          If None, all columns are returned.
             filters: Optional list of EAVFilter objects to filter the results.
-                    Each filter can specify:
+                    Each filter must use column_name (not column_id) and can specify:
                     - column_name: The EAV column name to filter on (required)
                     - numeric_min: Minimum numeric value (inclusive)
                     - numeric_max: Maximum numeric value (exclusive)
@@ -730,9 +803,10 @@ class CVec:
             raise ValueError(f"Table '{table_name}' not found for tenant {tenant_id}")
         table_id = tables_response[0]["id"]
 
-        # Get all columns for the table to build name -> id mapping
+        # Get all columns for the table to build name <-> id mappings
         columns = self.get_eav_columns(table_id)
         column_name_to_id = {col.name: col.eav_column_id for col in columns}
+        column_id_to_name = {col.eav_column_id: col.name for col in columns}
 
         # Convert column names to column IDs
         column_ids: Optional[List[str]] = None
@@ -745,41 +819,42 @@ class CVec:
                     )
                 column_ids.append(column_name_to_id[name])
 
-        # Convert EAVFilter objects to dictionaries, translating names to IDs
-        filters_json: List[Dict[str, Any]] = []
+        # Convert filters with column_name to filters with column_id
+        id_filters: Optional[List[EAVFilter]] = None
         if filters:
+            id_filters = []
             for f in filters:
+                if f.column_name is None:
+                    raise ValueError(
+                        "Filters for select_from_eav must use column_name, "
+                        "not column_id"
+                    )
                 if f.column_name not in column_name_to_id:
                     raise ValueError(
                         f"Filter column '{f.column_name}' not found in table "
                         f"'{table_name}'"
                     )
-                filter_dict: Dict[str, Any] = {
-                    "column_id": column_name_to_id[f.column_name]
-                }
-                if f.numeric_min is not None:
-                    filter_dict["numeric_min"] = f.numeric_min
-                if f.numeric_max is not None:
-                    filter_dict["numeric_max"] = f.numeric_max
-                if f.string_value is not None:
-                    filter_dict["string_value"] = f.string_value
-                if f.boolean_value is not None:
-                    filter_dict["boolean_value"] = f.boolean_value
-                filters_json.append(filter_dict)
+                id_filters.append(
+                    EAVFilter(
+                        column_id=column_name_to_id[f.column_name],
+                        numeric_min=f.numeric_min,
+                        numeric_max=f.numeric_max,
+                        string_value=f.string_value,
+                        boolean_value=f.boolean_value,
+                    )
+                )
 
-        params: Dict[str, Any] = {
-            "tenant_id": tenant_id,
-            "table_id": table_id,
-            "column_ids": column_ids,
-            "filters": filters_json,
-        }
-
-        response_data = self._call_rpc("select_from_eav", params)
+        # Call the ID-based method
+        response_data = self.select_from_eav_id(
+            tenant_id=tenant_id,
+            table_id=table_id,
+            column_ids=column_ids,
+            filters=id_filters,
+        )
 
         # Convert column IDs back to names in the response
-        column_id_to_name = {col.eav_column_id: col.name for col in columns}
         result: List[Dict[str, Any]] = []
-        for row in response_data or []:
+        for row in response_data:
             converted_row: Dict[str, Any] = {}
             for key, value in row.items():
                 if key == "id":

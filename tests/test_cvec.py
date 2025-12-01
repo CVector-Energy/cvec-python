@@ -422,14 +422,17 @@ class TestCVecGetMetricData:
 
 
 class TestEAVFilter:
-    def test_eav_filter_basic(self) -> None:
-        """Test EAVFilter with only column_name."""
+    def test_eav_filter_with_column_name(self) -> None:
+        """Test EAVFilter with column_name."""
         filter_obj = EAVFilter(column_name="Date")
         assert filter_obj.column_name == "Date"
-        assert filter_obj.numeric_min is None
-        assert filter_obj.numeric_max is None
-        assert filter_obj.string_value is None
-        assert filter_obj.boolean_value is None
+        assert filter_obj.column_id is None
+
+    def test_eav_filter_with_column_id(self) -> None:
+        """Test EAVFilter with column_id."""
+        filter_obj = EAVFilter(column_id="MTnaC")
+        assert filter_obj.column_id == "MTnaC"
+        assert filter_obj.column_name is None
 
     def test_eav_filter_numeric_range(self) -> None:
         """Test EAVFilter with numeric range."""
@@ -449,6 +452,16 @@ class TestEAVFilter:
         filter_obj = EAVFilter(column_name="Is Active", boolean_value=False)
         assert filter_obj.column_name == "Is Active"
         assert filter_obj.boolean_value is False
+
+    def test_eav_filter_requires_column_identifier(self) -> None:
+        """Test EAVFilter raises error when neither column_name nor column_id."""
+        with pytest.raises(ValueError, match="Either column_name or column_id"):
+            EAVFilter(numeric_min=100)
+
+    def test_eav_filter_rejects_both_identifiers(self) -> None:
+        """Test EAVFilter raises error when both column_name and column_id."""
+        with pytest.raises(ValueError, match="Only one of column_name or column_id"):
+            EAVFilter(column_name="Date", column_id="MTnaC")
 
 
 class TestCVecSelectFromEAV:
@@ -538,7 +551,7 @@ class TestCVecSelectFromEAV:
             return rpc_response
 
         client._query_table = self._mock_query_table()  # type: ignore[method-assign]
-        client._call_rpc = mock_call_rpc  # type: ignore[method-assign]
+        client._call_rpc = mock_call_rpc  # type: ignore[assignment, method-assign]
 
         result = client.select_from_eav(
             tenant_id=1,
@@ -571,7 +584,7 @@ class TestCVecSelectFromEAV:
             return rpc_response
 
         client._query_table = self._mock_query_table()  # type: ignore[method-assign]
-        client._call_rpc = mock_call_rpc  # type: ignore[method-assign]
+        client._call_rpc = mock_call_rpc  # type: ignore[assignment, method-assign]
 
         filters = [
             EAVFilter(column_name="Column 1", numeric_min=100, numeric_max=200),
@@ -613,7 +626,7 @@ class TestCVecSelectFromEAV:
             return rpc_response
 
         client._query_table = self._mock_query_table()  # type: ignore[method-assign]
-        client._call_rpc = mock_call_rpc  # type: ignore[method-assign]
+        client._call_rpc = mock_call_rpc  # type: ignore[assignment, method-assign]
 
         filters = [EAVFilter(column_name="Is Active", boolean_value=True)]
 
@@ -686,3 +699,145 @@ class TestCVecSelectFromEAV:
                 table_name="Test Table",
                 column_names=["Unknown Column"],
             )
+
+
+class TestCVecSelectFromEAVId:
+    """Tests for select_from_eav_id using table_id and column_ids directly."""
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_select_from_eav_id_basic(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test select_from_eav_id with no filters."""
+        rpc_response = [
+            {"id": "row1", "col1_id": 100.5, "col2_id": "value1"},
+            {"id": "row2", "col1_id": 200.0, "col2_id": "value2"},
+        ]
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+        client._call_rpc = lambda *args, **kwargs: rpc_response  # type: ignore[method-assign]
+
+        result = client.select_from_eav_id(
+            tenant_id=1,
+            table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
+        )
+
+        # Result keeps column IDs (no name translation)
+        assert len(result) == 2
+        assert result[0]["id"] == "row1"
+        assert result[0]["col1_id"] == 100.5
+        assert result[1]["col2_id"] == "value2"
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_select_from_eav_id_with_column_ids(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test select_from_eav_id with specific column_ids."""
+        rpc_response = [
+            {"id": "row1", "col1_id": 100.5},
+        ]
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+
+        captured_params: dict[str, Any] = {}
+
+        def mock_call_rpc(name: str, params: Any) -> Any:
+            captured_params.update(params)
+            return rpc_response
+
+        client._call_rpc = mock_call_rpc  # type: ignore[assignment, method-assign]
+
+        result = client.select_from_eav_id(
+            tenant_id=1,
+            table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
+            column_ids=["col1_id"],
+        )
+
+        assert len(result) == 1
+        assert captured_params["column_ids"] == ["col1_id"]
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_select_from_eav_id_with_filters(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test select_from_eav_id with filters using column_id."""
+        rpc_response = [
+            {"id": "row1", "col1_id": 150.0, "col2_id": "ACTIVE"},
+        ]
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+
+        captured_params: dict[str, Any] = {}
+
+        def mock_call_rpc(name: str, params: Any) -> Any:
+            captured_params.update(params)
+            return rpc_response
+
+        client._call_rpc = mock_call_rpc  # type: ignore[assignment, method-assign]
+
+        filters = [
+            EAVFilter(column_id="col1_id", numeric_min=100, numeric_max=200),
+            EAVFilter(column_id="col2_id", string_value="ACTIVE"),
+        ]
+
+        result = client.select_from_eav_id(
+            tenant_id=1,
+            table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
+            filters=filters,
+        )
+
+        assert len(result) == 1
+        assert captured_params["filters"] == [
+            {"column_id": "col1_id", "numeric_min": 100, "numeric_max": 200},
+            {"column_id": "col2_id", "string_value": "ACTIVE"},
+        ]
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_select_from_eav_id_rejects_column_name_filter(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test select_from_eav_id raises error when filter uses column_name."""
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+
+        filters = [EAVFilter(column_name="Column 1", numeric_min=100)]
+
+        with pytest.raises(
+            ValueError, match="Filters for select_from_eav_id must use column_id"
+        ):
+            client.select_from_eav_id(
+                tenant_id=1,
+                table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
+                filters=filters,
+            )
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_select_from_eav_id_empty_result(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test select_from_eav_id with empty result."""
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+        client._call_rpc = lambda *args, **kwargs: []  # type: ignore[method-assign]
+
+        result = client.select_from_eav_id(
+            tenant_id=1,
+            table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
+        )
+
+        assert result == []
