@@ -459,7 +459,9 @@ class TestCVecSelectFromEAV:
     ) -> Any:
         """Create a mock for _query_table that returns table and column data."""
 
-        def mock_query(table_name: str, query_params: str | None = None) -> Any:
+        def mock_query(
+            table_name: str, query_params: dict[str, str] | None = None
+        ) -> Any:
             if table_name == "eav_tables":
                 return [{"id": table_id, "tenant_id": 1, "name": "Test Table"}]
             elif table_name == "eav_columns":
