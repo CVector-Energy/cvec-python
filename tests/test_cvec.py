@@ -68,14 +68,18 @@ class TestCVecConstructor:
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
     @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch("cvec.cvec.get_api_key_for_host")
     @patch.dict(os.environ, {}, clear=True)
     def test_constructor_missing_api_key_raises_value_error(
-        self, mock_fetch_key: Any, mock_login: Any
+        self, mock_get_api_key: Any, mock_fetch_key: Any, mock_login: Any
     ) -> None:
         """Test CVec constructor raises ValueError if api_key is missing."""
+        # Mock the api_key_service to raise ValueError (no mapping available)
+        mock_get_api_key.side_effect = ValueError("No API keys mapping available")
+
         with pytest.raises(
             ValueError,
-            match="CVEC_API_KEY must be set either as an argument or environment variable",
+            match="CVEC_API_KEY must be set either as an argument, environment variable",
         ):
             CVec(host="test_host")
 
@@ -146,6 +150,75 @@ class TestCVecConstructor:
             ValueError, match="API key invalid length. Expected cva_ \\+ 36 symbols."
         ):
             client._construct_email_from_api_key()
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch("cvec.cvec.get_api_key_for_host")
+    @patch.dict(os.environ, {"CVEC_HOST": "https://tenant1.cvector.dev"}, clear=True)
+    def test_constructor_loads_api_key_from_service(
+        self, mock_get_api_key: Any, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test CVec constructor loads API key from api_key_service when not provided."""
+        mock_get_api_key.return_value = "cva_service12345678901234567890123456789"
+
+        client = CVec()
+
+        assert client.host == "https://tenant1.cvector.dev"
+        assert client._api_key == "cva_service12345678901234567890123456789"
+        mock_get_api_key.assert_called_once_with("https://tenant1.cvector.dev")
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch("cvec.cvec.get_api_key_for_host")
+    @patch.dict(os.environ, {}, clear=True)
+    def test_constructor_api_key_service_returns_none(
+        self, mock_get_api_key: Any, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test CVec constructor raises when api_key_service returns None."""
+        mock_get_api_key.return_value = None
+
+        with pytest.raises(
+            ValueError,
+            match="CVEC_API_KEY must be set either as an argument, environment variable",
+        ):
+            CVec(host="https://tenant1.cvector.dev")
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch("cvec.cvec.get_api_key_for_host")
+    @patch.dict(
+        os.environ,
+        {
+            "CVEC_HOST": "https://tenant1.cvector.dev",
+            "CVEC_API_KEY": "cva_envkey123456789012345678901234567890",
+        },
+        clear=True,
+    )
+    def test_constructor_env_api_key_takes_precedence_over_service(
+        self, mock_get_api_key: Any, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test that CVEC_API_KEY env var takes precedence over api_key_service."""
+        client = CVec()
+
+        assert client._api_key == "cva_envkey123456789012345678901234567890"
+        # Should not call the service if env var is set
+        mock_get_api_key.assert_not_called()
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch("cvec.cvec.get_api_key_for_host")
+    def test_constructor_arg_api_key_takes_precedence_over_service(
+        self, mock_get_api_key: Any, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test that api_key argument takes precedence over api_key_service."""
+        client = CVec(
+            host="https://tenant1.cvector.dev",
+            api_key="cva_argkey123456789012345678901234567890",
+        )
+
+        assert client._api_key == "cva_argkey123456789012345678901234567890"
+        # Should not call the service if api_key argument is provided
+        mock_get_api_key.assert_not_called()
 
 
 class TestCVecGetSpans:

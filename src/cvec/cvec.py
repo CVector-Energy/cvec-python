@@ -7,6 +7,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin
 from urllib.request import Request, urlopen
 
+from cvec.utils.api_key_service import get_api_key_for_host
 from cvec.models.metric import Metric, MetricDataPoint
 from cvec.models.span import Span
 from cvec.utils.arrow_converter import (
@@ -52,9 +53,23 @@ class CVec:
             raise ValueError(
                 "CVEC_HOST must be set either as an argument or environment variable"
             )
+
+        # If api_key is not provided, try to fetch it from the API key service
+        if not self._api_key:
+            try:
+                self._api_key = get_api_key_for_host(self.host)
+                if self._api_key:
+                    logger.info(
+                        f"API key loaded from mapping service for host: {self.host}"
+                    )
+            except ValueError as e:
+                # Log the error from the service, but we'll raise our own error below
+                logger.debug(f"Failed to load API key from service: {e}")
+
         if not self._api_key:
             raise ValueError(
-                "CVEC_API_KEY must be set either as an argument or environment variable"
+                "CVEC_API_KEY must be set either as an argument, environment variable, "
+                "or available in the API keys mapping (AWS_API_KEYS_SECRET or API_KEYS_MAPPING)"
             )
 
         # Fetch publishable key from host config
