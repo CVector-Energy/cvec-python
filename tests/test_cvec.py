@@ -1,13 +1,15 @@
-import pytest
+import io
 import os
-from unittest.mock import patch
 from datetime import datetime
-from cvec import CVec
-from cvec.models.metric import Metric
+from typing import Any
+from unittest.mock import patch
+
 import pyarrow as pa  # type: ignore[import-untyped]
 import pyarrow.ipc as ipc  # type: ignore[import-untyped]
-import io
-from typing import Any
+import pytest
+
+from cvec import CVec, EAVFilter
+from cvec.models.metric import Metric
 
 
 class TestCVecConstructor:
@@ -18,16 +20,52 @@ class TestCVecConstructor:
     ) -> None:
         """Test CVec constructor with all arguments provided."""
         client = CVec(
-            host="test_host",
+            host="https://test_host",
             default_start_at=datetime(2023, 1, 1, 0, 0, 0),
             default_end_at=datetime(2023, 1, 2, 0, 0, 0),
             api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
         )
-        assert client.host == "test_host"
+        assert client.host == "https://test_host"
         assert client.default_start_at == datetime(2023, 1, 1, 0, 0, 0)
         assert client.default_end_at == datetime(2023, 1, 2, 0, 0, 0)
         assert client._publishable_key == "test_publishable_key"
         assert client._api_key == "cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O"
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_constructor_adds_https_scheme(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test CVec constructor adds https:// scheme if not provided."""
+        client = CVec(
+            host="example.cvector.dev",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+        assert client.host == "https://example.cvector.dev"
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_constructor_preserves_https_scheme(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test CVec constructor preserves https:// scheme if already provided."""
+        client = CVec(
+            host="https://example.cvector.dev",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+        assert client.host == "https://example.cvector.dev"
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_constructor_preserves_http_scheme(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test CVec constructor preserves http:// scheme if provided."""
+        client = CVec(
+            host="http://localhost:3000",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+        assert client.host == "http://localhost:3000"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
     @patch.object(CVec, "_fetch_publishable_key", return_value="env_publishable_key")
@@ -47,7 +85,7 @@ class TestCVecConstructor:
             default_start_at=datetime(2023, 2, 1, 0, 0, 0),
             default_end_at=datetime(2023, 2, 2, 0, 0, 0),
         )
-        assert client.host == "env_host"
+        assert client.host == "https://env_host"
         assert client._publishable_key == "env_publishable_key"
         assert client._api_key == "cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O"
         assert client.default_start_at == datetime(2023, 2, 1, 0, 0, 0)
@@ -99,7 +137,7 @@ class TestCVecConstructor:
                 default_end_at=datetime(2023, 3, 2, 0, 0, 0),
                 api_key="cva_differentKeyKALxMnxUdI9hanF0TBPvvvr1",
             )
-            assert client.host == "arg_host"
+            assert client.host == "https://arg_host"
             assert client._api_key == "cva_differentKeyKALxMnxUdI9hanF0TBPvvvr1"
             assert client.default_start_at == datetime(2023, 3, 1, 0, 0, 0)
             assert client.default_end_at == datetime(2023, 3, 2, 0, 0, 0)
@@ -381,3 +419,204 @@ class TestCVecGetMetricData:
         assert result_table.column("name").to_pylist() == []
         assert result_table.column("value_double").to_pylist() == []
         assert result_table.column("value_string").to_pylist() == []
+
+
+class TestEAVFilter:
+    def test_eav_filter_basic(self) -> None:
+        """Test EAVFilter with only column_id."""
+        filter_obj = EAVFilter(column_id="date")
+        assert filter_obj.column_id == "date"
+        assert filter_obj.numeric_min is None
+        assert filter_obj.numeric_max is None
+        assert filter_obj.string_value is None
+        assert filter_obj.boolean_value is None
+
+    def test_eav_filter_numeric_range(self) -> None:
+        """Test EAVFilter with numeric range."""
+        filter_obj = EAVFilter(column_id="date", numeric_min=100, numeric_max=200)
+        assert filter_obj.column_id == "date"
+        assert filter_obj.numeric_min == 100
+        assert filter_obj.numeric_max == 200
+
+    def test_eav_filter_string_value(self) -> None:
+        """Test EAVFilter with string value."""
+        filter_obj = EAVFilter(column_id="status", string_value="failure")
+        assert filter_obj.column_id == "status"
+        assert filter_obj.string_value == "failure"
+
+    def test_eav_filter_boolean_value(self) -> None:
+        """Test EAVFilter with boolean value."""
+        filter_obj = EAVFilter(column_id="ZNAGI", boolean_value=False)
+        assert filter_obj.column_id == "ZNAGI"
+        assert filter_obj.boolean_value is False
+
+
+class TestCVecSelectFromEAV:
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_select_from_eav_basic(self, mock_fetch_key: Any, mock_login: Any) -> None:
+        """Test select_from_eav with no filters."""
+        response_data = [
+            {"id": "row1", "col1": 100.5, "col2": "value1"},
+            {"id": "row2", "col1": 200.0, "col2": "value2"},
+        ]
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+        client._call_rpc = lambda *args, **kwargs: response_data  # type: ignore[method-assign]
+
+        result = client.select_from_eav(
+            tenant_id=1,
+            table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
+        )
+
+        assert len(result) == 2
+        assert result[0]["id"] == "row1"
+        assert result[0]["col1"] == 100.5
+        assert result[1]["col2"] == "value2"
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_select_from_eav_with_column_ids(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test select_from_eav with specific column_ids."""
+        response_data = [
+            {"id": "row1", "col1": 100.5},
+            {"id": "row2", "col1": 200.0},
+        ]
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+
+        captured_params: dict[str, Any] = {}
+
+        def mock_call_rpc(name: str, params: Any) -> Any:
+            captured_params.update(params)
+            return response_data
+
+        client._call_rpc = mock_call_rpc  # type: ignore[method-assign]
+
+        result = client.select_from_eav(
+            tenant_id=1,
+            table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
+            column_ids=["col1"],
+        )
+
+        assert len(result) == 2
+        assert captured_params["column_ids"] == ["col1"]
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_select_from_eav_with_filters(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test select_from_eav with filters."""
+        response_data = [
+            {"id": "row1", "col1": 150.0, "col2": "ACTIVE"},
+        ]
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+
+        captured_params: dict[str, Any] = {}
+
+        def mock_call_rpc(name: str, params: Any) -> Any:
+            captured_params.update(params)
+            return response_data
+
+        client._call_rpc = mock_call_rpc  # type: ignore[method-assign]
+
+        filters = [
+            EAVFilter(column_id="col1", numeric_min=100, numeric_max=200),
+            EAVFilter(column_id="col2", string_value="ACTIVE"),
+        ]
+
+        result = client.select_from_eav(
+            tenant_id=1,
+            table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
+            filters=filters,
+        )
+
+        assert len(result) == 1
+        assert result[0]["col1"] == 150.0
+        assert captured_params["filters"] == [
+            {"column_id": "col1", "numeric_min": 100, "numeric_max": 200},
+            {"column_id": "col2", "string_value": "ACTIVE"},
+        ]
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_select_from_eav_with_boolean_filter(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test select_from_eav with boolean filter."""
+        response_data = [
+            {"id": "row1", "is_active": True},
+        ]
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+
+        captured_params: dict[str, Any] = {}
+
+        def mock_call_rpc(name: str, params: Any) -> Any:
+            captured_params.update(params)
+            return response_data
+
+        client._call_rpc = mock_call_rpc  # type: ignore[method-assign]
+
+        filters = [EAVFilter(column_id="is_active", boolean_value=True)]
+
+        result = client.select_from_eav(
+            tenant_id=1,
+            table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
+            filters=filters,
+        )
+
+        assert len(result) == 1
+        assert captured_params["filters"] == [
+            {"column_id": "is_active", "boolean_value": True}
+        ]
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_select_from_eav_empty_result(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test select_from_eav with empty result."""
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+        client._call_rpc = lambda *args, **kwargs: []  # type: ignore[method-assign]
+
+        result = client.select_from_eav(
+            tenant_id=1,
+            table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
+        )
+
+        assert result == []
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    def test_select_from_eav_none_result(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test select_from_eav with None result."""
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+        client._call_rpc = lambda *args, **kwargs: None  # type: ignore[method-assign]
+
+        result = client.select_from_eav(
+            tenant_id=1,
+            table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
+        )
+
+        assert result == []

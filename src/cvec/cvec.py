@@ -7,6 +7,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin
 from urllib.request import Request, urlopen
 
+from cvec.models.eav_filter import EAVFilter
 from cvec.models.metric import Metric, MetricDataPoint
 from cvec.models.span import Span
 from cvec.utils.arrow_converter import (
@@ -52,6 +53,10 @@ class CVec:
             raise ValueError(
                 "CVEC_HOST must be set either as an argument or environment variable"
             )
+
+        # Add https:// scheme if not provided
+        if not self.host.startswith("http://") and not self.host.startswith("https://"):
+            self.host = f"https://{self.host}"
         if not self._api_key:
             raise ValueError(
                 "CVEC_API_KEY must be set either as an argument or environment variable"
@@ -507,3 +512,137 @@ class CVec:
             raise ValueError(f"Failed to fetch config from {self.host}/config: {e}")
         except (KeyError, ValueError) as e:
             raise ValueError(f"Invalid config response: {e}")
+
+    def _call_rpc(
+        self,
+        function_name: str,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        """
+        Call a Supabase RPC function.
+
+        Args:
+            function_name: The name of the RPC function to call
+            params: Optional dictionary of parameters to pass to the function
+
+        Returns:
+            The response data from the RPC call
+        """
+        if not self._access_token:
+            raise ValueError("No access token available. Please login first.")
+        if not self._publishable_key:
+            raise ValueError("Publishable key not available")
+
+        url = f"{self.host}/supabase/rest/v1/rpc/{function_name}"
+
+        headers = {
+            "Accept": "application/json",
+            "Apikey": self._publishable_key,
+            "Authorization": f"Bearer {self._access_token}",
+            "Content-Profile": "app_data",
+            "Content-Type": "application/json",
+        }
+
+        request_body = json.dumps(params or {}).encode("utf-8")
+
+        def make_rpc_request() -> Any:
+            """Inner function to make the actual RPC request."""
+            req = Request(url, data=request_body, headers=headers, method="POST")
+            with urlopen(req) as response:
+                response_data = response.read()
+                return json.loads(response_data.decode("utf-8"))
+
+        try:
+            return make_rpc_request()
+        except HTTPError as e:
+            # Handle 401 Unauthorized with token refresh
+            if e.code == 401 and self._access_token and self._refresh_token:
+                try:
+                    self._refresh_supabase_token()
+                    # Update headers with new token
+                    headers["Authorization"] = f"Bearer {self._access_token}"
+
+                    # Retry the request
+                    req = Request(
+                        url, data=request_body, headers=headers, method="POST"
+                    )
+                    with urlopen(req) as response:
+                        response_data = response.read()
+                        return json.loads(response_data.decode("utf-8"))
+                except (HTTPError, URLError, ValueError, KeyError) as refresh_error:
+                    logger.warning(
+                        "Token refresh failed, continuing with original request: %s",
+                        refresh_error,
+                        exc_info=True,
+                    )
+                    # If refresh fails, re-raise the original 401 error
+                    raise e
+            raise
+
+    def select_from_eav(
+        self,
+        tenant_id: int,
+        table_id: str,
+        column_ids: Optional[List[str]] = None,
+        filters: Optional[List[EAVFilter]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Query pivoted data from EAV (Entity-Attribute-Value) tables.
+
+        This method calls the app_data.select_from_eav Supabase function to retrieve
+        data from EAV tables with optional column selection and filtering.
+
+        Args:
+            tenant_id: The tenant ID to query data for
+            table_id: The UUID of the EAV table to query
+            column_ids: Optional list of column IDs to include in the result.
+                       If None, all columns are returned.
+            filters: Optional list of EAVFilter objects to filter the results.
+                    Each filter can specify:
+                    - column_id: The EAV column ID to filter on (required)
+                    - numeric_min: Minimum numeric value (inclusive)
+                    - numeric_max: Maximum numeric value (exclusive)
+                    - string_value: Exact string value to match
+                    - boolean_value: Boolean value to match
+
+        Returns:
+            List of dictionaries, each representing a row with column values.
+            Each row contains an 'id' field plus fields for each column_id
+            with their corresponding values (number, string, or boolean).
+
+        Example:
+            >>> filters = [
+            ...     EAVFilter(column_id="timestamp", numeric_min=100, numeric_max=200),
+            ...     EAVFilter(column_id="status", string_value="ACTIVE"),
+            ... ]
+            >>> rows = client.select_from_eav(
+            ...     tenant_id=123,
+            ...     table_id="73d3845f-5c0e-4d20-8df7-6f8880c24eb4",
+            ...     column_ids=["timestamp", "status", "voltage"],
+            ...     filters=filters,
+            ... )
+        """
+        # Convert EAVFilter objects to dictionaries, excluding None values
+        filters_json: List[Dict[str, Any]] = []
+        if filters:
+            for f in filters:
+                filter_dict: Dict[str, Any] = {"column_id": f.column_id}
+                if f.numeric_min is not None:
+                    filter_dict["numeric_min"] = f.numeric_min
+                if f.numeric_max is not None:
+                    filter_dict["numeric_max"] = f.numeric_max
+                if f.string_value is not None:
+                    filter_dict["string_value"] = f.string_value
+                if f.boolean_value is not None:
+                    filter_dict["boolean_value"] = f.boolean_value
+                filters_json.append(filter_dict)
+
+        params: Dict[str, Any] = {
+            "tenant_id": tenant_id,
+            "table_id": table_id,
+            "column_ids": column_ids,
+            "filters": filters_json,
+        }
+
+        response_data = self._call_rpc("select_from_eav", params)
+        return list(response_data) if response_data else []
