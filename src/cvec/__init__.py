@@ -1,4 +1,4 @@
 from .cvec import CVec
-from .models import EAVFilter
+from .models import EAVColumn, EAVFilter, EAVTable
 
-__all__ = ["CVec", "EAVFilter"]
+__all__ = ["CVec", "EAVColumn", "EAVFilter", "EAVTable"]

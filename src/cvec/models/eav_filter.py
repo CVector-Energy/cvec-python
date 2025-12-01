@@ -13,7 +13,7 @@ class EAVFilter(BaseModel):
     - Use boolean_value for boolean matching
     """
 
-    column_id: str
+    column_name: str
     numeric_min: Optional[Union[int, float]] = None
     numeric_max: Optional[Union[int, float]] = None
     string_value: Optional[str] = None
