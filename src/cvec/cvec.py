@@ -33,6 +33,7 @@ class CVec:
     _refresh_token: Optional[str]
     _publishable_key: Optional[str]
     _api_key: Optional[str]
+    _tenant_id: int
 
     def __init__(
         self,
@@ -64,8 +65,8 @@ class CVec:
                 "CVEC_API_KEY must be set either as an argument or environment variable"
             )
 
-        # Fetch publishable key from host config
-        self._publishable_key = self._fetch_publishable_key()
+        # Fetch config (publishable key and tenant ID)
+        self._publishable_key = self._fetch_config()
 
         # Handle authentication
         email = self._construct_email_from_api_key()
@@ -485,15 +486,17 @@ class CVec:
         self._access_token = data["access_token"]
         self._refresh_token = data["refresh_token"]
 
-    def _fetch_publishable_key(self) -> str:
+    def _fetch_config(self) -> str:
         """
-        Fetch the publishable key from the host's config endpoint.
+        Fetch configuration from the host's config endpoint.
+
+        Sets the tenant_id on the instance and returns the publishable key.
 
         Returns:
             The publishable key from the config response
 
         Raises:
-            ValueError: If the config endpoint is not accessible or doesn't contain the key
+            ValueError: If the config endpoint is not accessible or doesn't contain required fields
         """
         try:
             config_url = f"{self.host}/config"
@@ -504,10 +507,14 @@ class CVec:
                 config_data = json.loads(response_data.decode("utf-8"))
 
             publishable_key = config_data.get("supabasePublishableKey")
+            tenant_id = config_data.get("tenantId")
 
             if not publishable_key:
                 raise ValueError(f"Configuration fetched from {config_url} is invalid")
+            if tenant_id is None:
+                raise ValueError(f"tenantId not found in config from {config_url}")
 
+            self._tenant_id = int(tenant_id)
             return str(publishable_key)
 
         except (HTTPError, URLError) as e:
@@ -646,19 +653,16 @@ class CVec:
                     raise e
             raise
 
-    def get_eav_tables(self, tenant_id: int) -> List[EAVTable]:
+    def get_eav_tables(self) -> List[EAVTable]:
         """
-        Get all EAV tables for a tenant.
-
-        Args:
-            tenant_id: The tenant ID to query tables for
+        Get all EAV tables for the tenant.
 
         Returns:
             List of EAVTable objects
         """
         response_data = self._query_table(
             "eav_tables",
-            {"tenant_id": f"eq.{tenant_id}", "order": "name"},
+            {"tenant_id": f"eq.{self._tenant_id}", "order": "name"},
         )
         return [EAVTable.model_validate(table) for table in response_data]
 
@@ -680,7 +684,6 @@ class CVec:
 
     def select_from_eav_id(
         self,
-        tenant_id: int,
         table_id: str,
         column_ids: Optional[List[str]] = None,
         filters: Optional[List[EAVFilter]] = None,
@@ -692,7 +695,6 @@ class CVec:
         interface using names, see select_from_eav().
 
         Args:
-            tenant_id: The tenant ID to query data for
             table_id: The UUID of the EAV table to query
             column_ids: Optional list of column IDs to include in the result.
                        If None, all columns are returned.
@@ -715,7 +717,6 @@ class CVec:
             ...     EAVFilter(column_id="z09PL", string_value="ACTIVE"),
             ... ]
             >>> rows = client.select_from_eav_id(
-            ...     tenant_id=1,
             ...     table_id="550e8400-e29b-41d4-a716-446655440000",
             ...     column_ids=["MTnaC", "z09PL", "ZNAGI"],
             ...     filters=filters,
@@ -742,7 +743,7 @@ class CVec:
                 filters_json.append(filter_dict)
 
         params: Dict[str, Any] = {
-            "tenant_id": tenant_id,
+            "tenant_id": self._tenant_id,
             "table_id": table_id,
             "column_ids": column_ids,
             "filters": filters_json,
@@ -753,7 +754,6 @@ class CVec:
 
     def select_from_eav(
         self,
-        tenant_id: int,
         table_name: str,
         column_names: Optional[List[str]] = None,
         filters: Optional[List[EAVFilter]] = None,
@@ -765,7 +765,6 @@ class CVec:
         select_from_eav_id(). For direct ID access, use select_from_eav_id().
 
         Args:
-            tenant_id: The tenant ID to query data for
             table_name: The name of the EAV table to query
             column_names: Optional list of column names to include in the result.
                          If None, all columns are returned.
@@ -788,7 +787,6 @@ class CVec:
             ...     EAVFilter(column_name="Status", string_value="ACTIVE"),
             ... ]
             >>> rows = client.select_from_eav(
-            ...     tenant_id=1,
             ...     table_name="BT/Scrap Entry",
             ...     column_names=["Weight", "Status", "Is Verified"],
             ...     filters=filters,
@@ -797,10 +795,14 @@ class CVec:
         # Look up the table ID from the table name
         tables_response = self._query_table(
             "eav_tables",
-            {"tenant_id": f"eq.{tenant_id}", "name": f"eq.{table_name}", "limit": "1"},
+            {
+                "tenant_id": f"eq.{self._tenant_id}",
+                "name": f"eq.{table_name}",
+                "limit": "1",
+            },
         )
         if not tables_response:
-            raise ValueError(f"Table '{table_name}' not found for tenant {tenant_id}")
+            raise ValueError(f"Table '{table_name}' not found")
         table_id = tables_response[0]["id"]
 
         # Get all columns for the table to build name <-> id mappings
@@ -846,7 +848,6 @@ class CVec:
 
         # Call the ID-based method
         response_data = self.select_from_eav_id(
-            tenant_id=tenant_id,
             table_id=table_id,
             column_ids=column_ids,
             filters=id_filters,

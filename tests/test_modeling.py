@@ -10,21 +10,24 @@ from unittest.mock import Mock, patch
 from cvec.cvec import CVec
 
 
+def mock_fetch_config_side_effect(instance: CVec) -> str:
+    """Side effect for _fetch_config mock that sets tenant_id."""
+    instance._tenant_id = 1
+    return "test_publishable_key"
+
+
 class TestModelingMethods:
     """Test the modeling methods in the CVec class."""
 
-    @patch("cvec.cvec.CVec._fetch_publishable_key")
-    @patch("cvec.cvec.CVec._login_with_supabase")
-    @patch("cvec.cvec.CVec._make_request")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_make_request")
     def test_get_modeling_metrics(
         self, mock_make_request: Mock, mock_login: Mock, mock_fetch_key: Mock
     ) -> None:
         """Test get_modeling_metrics method."""
-        # Mock the publishable key fetch
-        mock_fetch_key.return_value = "test_publishable_key"
-
-        # Mock the login method
-        mock_login.return_value = None
 
         # Mock the response
         mock_response = [
@@ -64,18 +67,15 @@ class TestModelingMethods:
         assert call_args[1]["params"]["start_at"] == "2024-01-01T12:00:00"
         assert call_args[1]["params"]["end_at"] == "2024-01-01T13:00:00"
 
-    @patch("cvec.cvec.CVec._fetch_publishable_key")
-    @patch("cvec.cvec.CVec._login_with_supabase")
-    @patch("cvec.cvec.CVec._make_request")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_make_request")
     def test_get_modeling_metrics_data(
         self, mock_make_request: Mock, mock_login: Mock, mock_fetch_key: Mock
     ) -> None:
         """Test get_modeling_metrics_data method."""
-        # Mock the publishable key fetch
-        mock_fetch_key.return_value = "test_publishable_key"
-
-        # Mock the login method
-        mock_login.return_value = None
 
         # Mock the response
         mock_response = [
@@ -117,18 +117,15 @@ class TestModelingMethods:
         assert call_args[1]["params"]["start_at"] == "2024-01-01T12:00:00"
         assert call_args[1]["params"]["end_at"] == "2024-01-01T13:00:00"
 
-    @patch("cvec.cvec.CVec._fetch_publishable_key")
-    @patch("cvec.cvec.CVec._login_with_supabase")
-    @patch("cvec.cvec.CVec._make_request")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(CVec, "_make_request")
     def test_get_modeling_metrics_data_arrow(
         self, mock_make_request: Mock, mock_login: Mock, mock_fetch_key: Mock
     ) -> None:
         """Test get_modeling_metrics_data_arrow method."""
-        # Mock the publishable key fetch
-        mock_fetch_key.return_value = "test_publishable_key"
-
-        # Mock the login method
-        mock_login.return_value = None
 
         # Mock the response (Arrow data as bytes)
         mock_response = b"fake_arrow_data"
