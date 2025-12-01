@@ -584,14 +584,15 @@ class CVec:
     def _query_table(
         self,
         table_name: str,
-        query_params: Optional[str] = None,
+        query_params: Optional[Dict[str, str]] = None,
     ) -> Any:
         """
         Query a Supabase table via PostgREST.
 
         Args:
             table_name: The name of the table to query
-            query_params: Optional PostgREST query parameters (e.g., "name=eq.foo")
+            query_params: Optional dict of PostgREST query parameters
+                         (e.g., {"name": "eq.foo", "order": "name"})
 
         Returns:
             The response data from the query
@@ -603,7 +604,8 @@ class CVec:
 
         url = f"{self.host}/supabase/rest/v1/{table_name}"
         if query_params:
-            url = f"{url}?{query_params}"
+            encoded_params = urlencode(query_params)
+            url = f"{url}?{encoded_params}"
 
         headers = {
             "Accept": "application/json",
@@ -655,7 +657,8 @@ class CVec:
             List of EAVTable objects
         """
         response_data = self._query_table(
-            "eav_tables", f"tenant_id=eq.{tenant_id}&order=name"
+            "eav_tables",
+            {"tenant_id": f"eq.{tenant_id}", "order": "name"},
         )
         return [EAVTable.model_validate(table) for table in response_data]
 
@@ -670,7 +673,8 @@ class CVec:
             List of EAVColumn objects
         """
         response_data = self._query_table(
-            "eav_columns", f"eav_table_id=eq.{table_id}&order=name"
+            "eav_columns",
+            {"eav_table_id": f"eq.{table_id}", "order": "name"},
         )
         return [EAVColumn.model_validate(column) for column in response_data]
 
@@ -720,7 +724,7 @@ class CVec:
         # Look up the table ID from the table name
         tables_response = self._query_table(
             "eav_tables",
-            f"tenant_id=eq.{tenant_id}&name=eq.{table_name}&limit=1",
+            {"tenant_id": f"eq.{tenant_id}", "name": f"eq.{table_name}", "limit": "1"},
         )
         if not tables_response:
             raise ValueError(f"Table '{table_name}' not found for tenant {tenant_id}")
