@@ -12,9 +12,17 @@ from cvec import CVec, EAVFilter
 from cvec.models.metric import Metric
 
 
+def mock_fetch_config_side_effect(instance: CVec) -> str:
+    """Side effect for _fetch_config mock that sets tenant_id."""
+    instance._tenant_id = 1
+    return "test_publishable_key"
+
+
 class TestCVecConstructor:
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_constructor_with_arguments(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -32,7 +40,9 @@ class TestCVecConstructor:
         assert client._api_key == "cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_constructor_adds_https_scheme(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -44,7 +54,9 @@ class TestCVecConstructor:
         assert client.host == "https://example.cvector.dev"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_constructor_preserves_https_scheme(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -56,7 +68,9 @@ class TestCVecConstructor:
         assert client.host == "https://example.cvector.dev"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_constructor_preserves_http_scheme(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -68,7 +82,9 @@ class TestCVecConstructor:
         assert client.host == "http://localhost:3000"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="env_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     @patch.dict(
         os.environ,
         {
@@ -86,13 +102,15 @@ class TestCVecConstructor:
             default_end_at=datetime(2023, 2, 2, 0, 0, 0),
         )
         assert client.host == "https://env_host"
-        assert client._publishable_key == "env_publishable_key"
+        assert client._publishable_key == "test_publishable_key"
         assert client._api_key == "cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O"
         assert client.default_start_at == datetime(2023, 2, 1, 0, 0, 0)
         assert client.default_end_at == datetime(2023, 2, 2, 0, 0, 0)
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     @patch.dict(os.environ, {}, clear=True)
     def test_constructor_missing_host_raises_value_error(
         self, mock_fetch_key: Any, mock_login: Any
@@ -105,7 +123,9 @@ class TestCVecConstructor:
             CVec(api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O")
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     @patch.dict(os.environ, {}, clear=True)
     def test_constructor_missing_api_key_raises_value_error(
         self, mock_fetch_key: Any, mock_login: Any
@@ -118,7 +138,9 @@ class TestCVecConstructor:
             CVec(host="test_host")
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_constructor_args_override_env_vars(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -143,7 +165,9 @@ class TestCVecConstructor:
             assert client.default_end_at == datetime(2023, 3, 2, 0, 0, 0)
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_construct_email_from_api_key(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -156,7 +180,9 @@ class TestCVecConstructor:
         assert email == "cva+hHs0@cvector.app"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_construct_email_from_api_key_invalid_format(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -170,7 +196,9 @@ class TestCVecConstructor:
             client._construct_email_from_api_key()
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_construct_email_from_api_key_invalid_length(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -188,7 +216,9 @@ class TestCVecConstructor:
 
 class TestCVecGetSpans:
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_get_spans_basic_case(self, mock_fetch_key: Any, mock_login: Any) -> None:
         # Simulate backend response
         response_data = [
@@ -228,7 +258,9 @@ class TestCVecGetSpans:
 
 class TestCVecGetMetrics:
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_get_metrics_no_interval(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -260,7 +292,9 @@ class TestCVecGetMetrics:
         assert metrics[1].name == "metric2"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_get_metrics_with_interval(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -285,7 +319,9 @@ class TestCVecGetMetrics:
         assert metrics[0].name == "metric_in_interval"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_get_metrics_no_data_found(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -302,7 +338,9 @@ class TestCVecGetMetrics:
 
 class TestCVecGetMetricData:
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_get_metric_data_basic_case(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -337,7 +375,9 @@ class TestCVecGetMetricData:
         assert data_points[2].value_string == "val_str"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_get_metric_data_no_data_points(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -350,7 +390,9 @@ class TestCVecGetMetricData:
         assert data_points == []
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_get_metric_arrow_basic_case(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -393,7 +435,9 @@ class TestCVecGetMetricData:
         ]
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_get_metric_arrow_empty(self, mock_fetch_key: Any, mock_login: Any) -> None:
         table = pa.table(
             {
@@ -503,7 +547,9 @@ class TestCVecSelectFromEAV:
         return mock_query
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_select_from_eav_basic(self, mock_fetch_key: Any, mock_login: Any) -> None:
         """Test select_from_eav with no filters."""
         # Response uses column IDs
@@ -519,7 +565,6 @@ class TestCVecSelectFromEAV:
         client._call_rpc = lambda *args, **kwargs: rpc_response  # type: ignore[method-assign]
 
         result = client.select_from_eav(
-            tenant_id=1,
             table_name="Test Table",
         )
 
@@ -530,7 +575,9 @@ class TestCVecSelectFromEAV:
         assert result[1]["Column 2"] == "value2"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_select_from_eav_with_column_names(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -554,7 +601,6 @@ class TestCVecSelectFromEAV:
         client._call_rpc = mock_call_rpc  # type: ignore[assignment, method-assign]
 
         result = client.select_from_eav(
-            tenant_id=1,
             table_name="Test Table",
             column_names=["Column 1"],
         )
@@ -564,7 +610,9 @@ class TestCVecSelectFromEAV:
         assert captured_params["column_ids"] == ["col1_id"]
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_select_from_eav_with_filters(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -592,7 +640,6 @@ class TestCVecSelectFromEAV:
         ]
 
         result = client.select_from_eav(
-            tenant_id=1,
             table_name="Test Table",
             filters=filters,
         )
@@ -606,7 +653,9 @@ class TestCVecSelectFromEAV:
         ]
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_select_from_eav_with_boolean_filter(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -631,7 +680,6 @@ class TestCVecSelectFromEAV:
         filters = [EAVFilter(column_name="Is Active", boolean_value=True)]
 
         result = client.select_from_eav(
-            tenant_id=1,
             table_name="Test Table",
             filters=filters,
         )
@@ -642,7 +690,9 @@ class TestCVecSelectFromEAV:
         ]
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_select_from_eav_empty_result(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -655,14 +705,15 @@ class TestCVecSelectFromEAV:
         client._call_rpc = lambda *args, **kwargs: []  # type: ignore[method-assign]
 
         result = client.select_from_eav(
-            tenant_id=1,
             table_name="Test Table",
         )
 
         assert result == []
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_select_from_eav_table_not_found(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -675,12 +726,13 @@ class TestCVecSelectFromEAV:
 
         with pytest.raises(ValueError, match="Table 'Unknown Table' not found"):
             client.select_from_eav(
-                tenant_id=1,
                 table_name="Unknown Table",
             )
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_select_from_eav_column_not_found(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -695,7 +747,6 @@ class TestCVecSelectFromEAV:
             ValueError, match="Column 'Unknown Column' not found in table 'Test Table'"
         ):
             client.select_from_eav(
-                tenant_id=1,
                 table_name="Test Table",
                 column_names=["Unknown Column"],
             )
@@ -705,7 +756,9 @@ class TestCVecSelectFromEAVId:
     """Tests for select_from_eav_id using table_id and column_ids directly."""
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_select_from_eav_id_basic(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -721,7 +774,6 @@ class TestCVecSelectFromEAVId:
         client._call_rpc = lambda *args, **kwargs: rpc_response  # type: ignore[method-assign]
 
         result = client.select_from_eav_id(
-            tenant_id=1,
             table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
         )
 
@@ -732,7 +784,9 @@ class TestCVecSelectFromEAVId:
         assert result[1]["col2_id"] == "value2"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_select_from_eav_id_with_column_ids(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -754,7 +808,6 @@ class TestCVecSelectFromEAVId:
         client._call_rpc = mock_call_rpc  # type: ignore[assignment, method-assign]
 
         result = client.select_from_eav_id(
-            tenant_id=1,
             table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
             column_ids=["col1_id"],
         )
@@ -763,7 +816,9 @@ class TestCVecSelectFromEAVId:
         assert captured_params["column_ids"] == ["col1_id"]
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_select_from_eav_id_with_filters(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -790,7 +845,6 @@ class TestCVecSelectFromEAVId:
         ]
 
         result = client.select_from_eav_id(
-            tenant_id=1,
             table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
             filters=filters,
         )
@@ -802,7 +856,9 @@ class TestCVecSelectFromEAVId:
         ]
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_select_from_eav_id_rejects_column_name_filter(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -818,13 +874,14 @@ class TestCVecSelectFromEAVId:
             ValueError, match="Filters for select_from_eav_id must use column_id"
         ):
             client.select_from_eav_id(
-                tenant_id=1,
                 table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
                 filters=filters,
             )
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     def test_select_from_eav_id_empty_result(
         self, mock_fetch_key: Any, mock_login: Any
     ) -> None:
@@ -836,7 +893,6 @@ class TestCVecSelectFromEAVId:
         client._call_rpc = lambda *args, **kwargs: []  # type: ignore[method-assign]
 
         result = client.select_from_eav_id(
-            tenant_id=1,
             table_id="7a80f3a2-6fa1-43ce-8483-76bd00dc93c6",
         )
 
