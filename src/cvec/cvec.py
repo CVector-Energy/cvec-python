@@ -7,6 +7,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin
 from urllib.request import Request, urlopen
 
+from cvec.models.agent_post import AgentPostRecommendation
 from cvec.models.metric import Metric, MetricDataPoint
 from cvec.models.span import Span
 from cvec.utils.arrow_converter import (
@@ -417,6 +418,36 @@ class CVec:
         result = self._make_request("GET", endpoint, params=params)
         assert isinstance(result, bytes)
         return result
+
+    def add_agent_post(
+        self,
+        title: str,
+        author: str,
+        image_id: Optional[str] = None,
+        content: Optional[str] = None,
+        recommendations: Optional[List[AgentPostRecommendation]] = None,
+    ) -> None:
+        """
+        Add an agent post.
+
+        Note: If image_id is provided, the image must be uploaded to S3 beforehand.
+        The image_id should be the UUID used as the filename (without .png extension)
+        in the S3 bucket at the tenant's path.
+        """
+
+        payload: Dict[str, Any] = {
+            "image_id": image_id,
+            "author": author,
+            "title": title,
+            "content": content,
+        }
+
+        if recommendations:
+            payload["recommendations"] = [rec.model_dump(mode="json") for rec in recommendations]
+
+        self._make_request(
+            "POST", "/api/agent_posts/add", json_data=payload
+        )
 
     def _login_with_supabase(self, email: str, password: str) -> None:
         """
