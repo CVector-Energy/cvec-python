@@ -6,12 +6,16 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class RecommendationType(str, Enum):
-    """Type of recommendation."""
+class Severity(str, Enum):
+    """Severity level for recommendations and tags."""
 
     CRITICAL = "critical"
     WARNING = "warning"
     INFO = "info"
+
+
+# Deprecated: Use Severity instead
+RecommendationType = Severity
 
 
 class AgentPostRecommendation(BaseModel):
@@ -20,11 +24,21 @@ class AgentPostRecommendation(BaseModel):
     """
 
     content: str = Field(..., min_length=1)
-    recommendation_type: RecommendationType
+    severity: Severity
+
+
+class AgentPostTag(BaseModel):
+    """
+    Represents a tag for creating an agent post.
+    """
+
+    content: str = Field(..., min_length=1)
+    severity: Severity
+
 
 class AgentPost(BaseModel):
     """
-    Represents an agent post with optional recommendations.
+    Represents an agent post with optional recommendations and tags.
     """
 
     author: str
@@ -32,3 +46,4 @@ class AgentPost(BaseModel):
     content: Optional[str] = None
     image_id: Optional[UUID] = None
     recommendations: Optional[List[AgentPostRecommendation]] = None
+    tags: Optional[List[AgentPostTag]] = None

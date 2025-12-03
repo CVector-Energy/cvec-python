@@ -2,7 +2,7 @@ import os
 import uuid
 
 from cvec import CVec
-from cvec.models.agent_post import AgentPostRecommendation, RecommendationType
+from cvec.models.agent_post import AgentPostRecommendation, AgentPostTag, Severity
 
 
 def main() -> None:
@@ -15,15 +15,26 @@ def main() -> None:
     recommendations = [
         AgentPostRecommendation(
             content="Critical recommendation",
-            recommendation_type=RecommendationType.CRITICAL,
+            severity=Severity.CRITICAL,
         ),
         AgentPostRecommendation(
             content="Warning recommendation",
-            recommendation_type=RecommendationType.WARNING,
+            severity=Severity.WARNING,
         ),
         AgentPostRecommendation(
             content="Info recommendation",
-            recommendation_type=RecommendationType.INFO,
+            severity=Severity.INFO,
+        ),
+    ]
+
+    tags = [
+        AgentPostTag(
+            content="urgent",
+            severity=Severity.CRITICAL,
+        ),
+        AgentPostTag(
+            content="monitoring",
+            severity=Severity.INFO,
         ),
     ]
 
@@ -33,6 +44,7 @@ def main() -> None:
         image_id=str(uuid.uuid4()),  # Replace with actual image UUID uploaded to S3
         content="SDK add post test.",
         recommendations=recommendations,
+        tags=tags,
     )
 
 

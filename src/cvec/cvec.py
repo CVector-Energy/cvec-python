@@ -7,7 +7,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin
 from urllib.request import Request, urlopen
 
-from cvec.models.agent_post import AgentPostRecommendation
+from cvec.models.agent_post import AgentPostRecommendation, AgentPostTag
 from cvec.models.metric import Metric, MetricDataPoint
 from cvec.models.span import Span
 from cvec.utils.arrow_converter import (
@@ -426,6 +426,7 @@ class CVec:
         image_id: Optional[str] = None,
         content: Optional[str] = None,
         recommendations: Optional[List[AgentPostRecommendation]] = None,
+        tags: Optional[List[AgentPostTag]] = None,
     ) -> None:
         """
         Add an agent post.
@@ -444,6 +445,9 @@ class CVec:
 
         if recommendations:
             payload["recommendations"] = [rec.model_dump(mode="json") for rec in recommendations]
+
+        if tags:
+            payload["tags"] = [tag.model_dump(mode="json") for tag in tags]
 
         self._make_request(
             "POST", "/api/agent_posts/add", json_data=payload
