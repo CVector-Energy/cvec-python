@@ -38,6 +38,6 @@ class AgentPost(BaseModel):
     author: str
     title: str
     content: Optional[str] = None
-    image_id: Optional[UUID] = None
+    image_id: Optional[str] = None
     recommendations: Optional[List[AgentPostRecommendation]] = None
     tags: Optional[List[AgentPostTag]] = None
