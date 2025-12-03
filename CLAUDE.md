@@ -1,0 +1,1 @@
+- Name files for their main export, transforming Python names from PascalCase to underscore_case. For example, the file that defines the EAVFilter class should be named eav_filter.py.

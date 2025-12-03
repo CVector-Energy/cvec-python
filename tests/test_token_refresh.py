@@ -9,11 +9,19 @@ import pytest
 from cvec import CVec
 
 
+def mock_fetch_config_side_effect(instance: CVec) -> str:
+    """Side effect for _fetch_config mock that sets tenant_id."""
+    instance._tenant_id = 1
+    return "test_publishable_key"
+
+
 class TestTokenRefresh:
     """Test cases for automatic token refresh functionality."""
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     @patch("cvec.cvec.urlopen")
     def test_token_refresh_on_401(
         self,
@@ -67,7 +75,9 @@ class TestTokenRefresh:
         assert result == []
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     @patch("cvec.cvec.urlopen")
     def test_token_refresh_handles_network_errors_gracefully(
         self,
@@ -110,7 +120,9 @@ class TestTokenRefresh:
             assert exc_info.value.code == 401
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
-    @patch.object(CVec, "_fetch_publishable_key", return_value="test_publishable_key")
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
     @patch("cvec.cvec.urlopen")
     def test_token_refresh_handles_missing_refresh_token(
         self,

@@ -8,6 +8,9 @@ from urllib.parse import urlencode, urljoin
 from urllib.request import Request, urlopen
 
 from cvec.models.agent_post import AgentPostRecommendation, AgentPostTag
+from cvec.models.eav_column import EAVColumn
+from cvec.models.eav_filter import EAVFilter
+from cvec.models.eav_table import EAVTable
 from cvec.models.metric import Metric, MetricDataPoint
 from cvec.models.span import Span
 from cvec.utils.arrow_converter import (
@@ -31,6 +34,7 @@ class CVec:
     _refresh_token: Optional[str]
     _publishable_key: Optional[str]
     _api_key: Optional[str]
+    _tenant_id: int
 
     def __init__(
         self,
@@ -53,13 +57,17 @@ class CVec:
             raise ValueError(
                 "CVEC_HOST must be set either as an argument or environment variable"
             )
+
+        # Add https:// scheme if not provided
+        if not self.host.startswith("http://") and not self.host.startswith("https://"):
+            self.host = f"https://{self.host}"
         if not self._api_key:
             raise ValueError(
                 "CVEC_API_KEY must be set either as an argument or environment variable"
             )
 
-        # Fetch publishable key from host config
-        self._publishable_key = self._fetch_publishable_key()
+        # Fetch config (publishable key and tenant ID)
+        self._publishable_key = self._fetch_config()
 
         # Handle authentication
         email = self._construct_email_from_api_key()
@@ -513,15 +521,17 @@ class CVec:
         self._access_token = data["access_token"]
         self._refresh_token = data["refresh_token"]
 
-    def _fetch_publishable_key(self) -> str:
+    def _fetch_config(self) -> str:
         """
-        Fetch the publishable key from the host's config endpoint.
+        Fetch configuration from the host's config endpoint.
+
+        Sets the tenant_id on the instance and returns the publishable key.
 
         Returns:
             The publishable key from the config response
 
         Raises:
-            ValueError: If the config endpoint is not accessible or doesn't contain the key
+            ValueError: If the config endpoint is not accessible or doesn't contain required fields
         """
         try:
             config_url = f"{self.host}/config"
@@ -532,13 +542,363 @@ class CVec:
                 config_data = json.loads(response_data.decode("utf-8"))
 
             publishable_key = config_data.get("supabasePublishableKey")
+            tenant_id = config_data.get("tenantId")
 
             if not publishable_key:
                 raise ValueError(f"Configuration fetched from {config_url} is invalid")
+            if tenant_id is None:
+                raise ValueError(f"tenantId not found in config from {config_url}")
 
+            self._tenant_id = int(tenant_id)
             return str(publishable_key)
 
         except (HTTPError, URLError) as e:
             raise ValueError(f"Failed to fetch config from {self.host}/config: {e}")
         except (KeyError, ValueError) as e:
             raise ValueError(f"Invalid config response: {e}")
+
+    def _call_rpc(
+        self,
+        function_name: str,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        """
+        Call a Supabase RPC function.
+
+        Args:
+            function_name: The name of the RPC function to call
+            params: Optional dictionary of parameters to pass to the function
+
+        Returns:
+            The response data from the RPC call
+        """
+        if not self._access_token:
+            raise ValueError("No access token available. Please login first.")
+        if not self._publishable_key:
+            raise ValueError("Publishable key not available")
+
+        url = f"{self.host}/supabase/rest/v1/rpc/{function_name}"
+
+        headers = {
+            "Accept": "application/json",
+            "Apikey": self._publishable_key,
+            "Authorization": f"Bearer {self._access_token}",
+            "Content-Profile": "app_data",
+            "Content-Type": "application/json",
+        }
+
+        request_body = json.dumps(params or {}).encode("utf-8")
+
+        def make_rpc_request() -> Any:
+            """Inner function to make the actual RPC request."""
+            req = Request(url, data=request_body, headers=headers, method="POST")
+            with urlopen(req) as response:
+                response_data = response.read()
+                return json.loads(response_data.decode("utf-8"))
+
+        try:
+            return make_rpc_request()
+        except HTTPError as e:
+            # Handle 401 Unauthorized with token refresh
+            if e.code == 401 and self._access_token and self._refresh_token:
+                try:
+                    self._refresh_supabase_token()
+                    # Update headers with new token
+                    headers["Authorization"] = f"Bearer {self._access_token}"
+
+                    # Retry the request
+                    req = Request(
+                        url, data=request_body, headers=headers, method="POST"
+                    )
+                    with urlopen(req) as response:
+                        response_data = response.read()
+                        return json.loads(response_data.decode("utf-8"))
+                except (HTTPError, URLError, ValueError, KeyError) as refresh_error:
+                    logger.warning(
+                        "Token refresh failed, continuing with original request: %s",
+                        refresh_error,
+                        exc_info=True,
+                    )
+                    # If refresh fails, re-raise the original 401 error
+                    raise e
+            raise
+
+    def _query_table(
+        self,
+        table_name: str,
+        query_params: Optional[Dict[str, str]] = None,
+    ) -> Any:
+        """
+        Query a Supabase table via PostgREST.
+
+        Args:
+            table_name: The name of the table to query
+            query_params: Optional dict of PostgREST query parameters
+                         (e.g., {"name": "eq.foo", "order": "name"})
+
+        Returns:
+            The response data from the query
+        """
+        if not self._access_token:
+            raise ValueError("No access token available. Please login first.")
+        if not self._publishable_key:
+            raise ValueError("Publishable key not available")
+
+        url = f"{self.host}/supabase/rest/v1/{table_name}"
+        if query_params:
+            encoded_params = urlencode(query_params)
+            url = f"{url}?{encoded_params}"
+
+        headers = {
+            "Accept": "application/json",
+            "Accept-Profile": "app_data",
+            "Apikey": self._publishable_key,
+            "Authorization": f"Bearer {self._access_token}",
+        }
+
+        def make_query_request() -> Any:
+            """Inner function to make the actual query request."""
+            req = Request(url, headers=headers, method="GET")
+            with urlopen(req) as response:
+                response_data = response.read()
+                return json.loads(response_data.decode("utf-8"))
+
+        try:
+            return make_query_request()
+        except HTTPError as e:
+            # Handle 401 Unauthorized with token refresh
+            if e.code == 401 and self._access_token and self._refresh_token:
+                try:
+                    self._refresh_supabase_token()
+                    # Update headers with new token
+                    headers["Authorization"] = f"Bearer {self._access_token}"
+
+                    # Retry the request
+                    req = Request(url, headers=headers, method="GET")
+                    with urlopen(req) as response:
+                        response_data = response.read()
+                        return json.loads(response_data.decode("utf-8"))
+                except (HTTPError, URLError, ValueError, KeyError) as refresh_error:
+                    logger.warning(
+                        "Token refresh failed, continuing with original request: %s",
+                        refresh_error,
+                        exc_info=True,
+                    )
+                    # If refresh fails, re-raise the original 401 error
+                    raise e
+            raise
+
+    def get_eav_tables(self) -> List[EAVTable]:
+        """
+        Get all EAV tables for the tenant.
+
+        Returns:
+            List of EAVTable objects
+        """
+        response_data = self._query_table(
+            "eav_tables",
+            {"tenant_id": f"eq.{self._tenant_id}", "order": "name"},
+        )
+        return [EAVTable.model_validate(table) for table in response_data]
+
+    def get_eav_columns(self, table_id: str) -> List[EAVColumn]:
+        """
+        Get all columns for an EAV table.
+
+        Args:
+            table_id: The UUID of the EAV table
+
+        Returns:
+            List of EAVColumn objects
+        """
+        response_data = self._query_table(
+            "eav_columns",
+            {"eav_table_id": f"eq.{table_id}", "order": "name"},
+        )
+        return [EAVColumn.model_validate(column) for column in response_data]
+
+    def select_from_eav_id(
+        self,
+        table_id: str,
+        column_ids: Optional[List[str]] = None,
+        filters: Optional[List[EAVFilter]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Query pivoted data from EAV tables using table and column IDs directly.
+
+        This is the lower-level method that works with IDs. For a more user-friendly
+        interface using names, see select_from_eav().
+
+        Args:
+            table_id: The UUID of the EAV table to query
+            column_ids: Optional list of column IDs to include in the result.
+                       If None, all columns are returned.
+            filters: Optional list of EAVFilter objects to filter the results.
+                    Each filter must use column_id (not column_name) and can specify:
+                    - column_id: The EAV column ID to filter on (required)
+                    - numeric_min: Minimum numeric value (inclusive)
+                    - numeric_max: Maximum numeric value (exclusive)
+                    - string_value: Exact string value to match
+                    - boolean_value: Boolean value to match
+
+        Returns:
+            List of dictionaries, each representing a row with column values.
+            Each row contains an 'id' field plus fields for each column_id
+            with their corresponding values (number, string, or boolean).
+
+        Example:
+            >>> filters = [
+            ...     EAVFilter(column_id="MTnaC", numeric_min=100, numeric_max=200),
+            ...     EAVFilter(column_id="z09PL", string_value="ACTIVE"),
+            ... ]
+            >>> rows = client.select_from_eav_id(
+            ...     table_id="550e8400-e29b-41d4-a716-446655440000",
+            ...     column_ids=["MTnaC", "z09PL", "ZNAGI"],
+            ...     filters=filters,
+            ... )
+        """
+        # Convert EAVFilter objects to dictionaries
+        filters_json: List[Dict[str, Any]] = []
+        if filters:
+            for f in filters:
+                if f.column_id is None:
+                    raise ValueError(
+                        "Filters for select_from_eav_id must use column_id, "
+                        "not column_name"
+                    )
+                filter_dict: Dict[str, Any] = {"column_id": f.column_id}
+                if f.numeric_min is not None:
+                    filter_dict["numeric_min"] = f.numeric_min
+                if f.numeric_max is not None:
+                    filter_dict["numeric_max"] = f.numeric_max
+                if f.string_value is not None:
+                    filter_dict["string_value"] = f.string_value
+                if f.boolean_value is not None:
+                    filter_dict["boolean_value"] = f.boolean_value
+                filters_json.append(filter_dict)
+
+        params: Dict[str, Any] = {
+            "tenant_id": self._tenant_id,
+            "table_id": table_id,
+            "column_ids": column_ids,
+            "filters": filters_json,
+        }
+
+        response_data = self._call_rpc("select_from_eav", params)
+        return list(response_data) if response_data else []
+
+    def select_from_eav(
+        self,
+        table_name: str,
+        column_names: Optional[List[str]] = None,
+        filters: Optional[List[EAVFilter]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Query pivoted data from EAV tables using human-readable names.
+
+        This method looks up table and column IDs from names, then calls
+        select_from_eav_id(). For direct ID access, use select_from_eav_id().
+
+        Args:
+            table_name: The name of the EAV table to query
+            column_names: Optional list of column names to include in the result.
+                         If None, all columns are returned.
+            filters: Optional list of EAVFilter objects to filter the results.
+                    Each filter must use column_name (not column_id) and can specify:
+                    - column_name: The EAV column name to filter on (required)
+                    - numeric_min: Minimum numeric value (inclusive)
+                    - numeric_max: Maximum numeric value (exclusive)
+                    - string_value: Exact string value to match
+                    - boolean_value: Boolean value to match
+
+        Returns:
+            List of dictionaries, each representing a row with column values.
+            Each row contains an 'id' field plus fields for each column name
+            with their corresponding values (number, string, or boolean).
+
+        Example:
+            >>> filters = [
+            ...     EAVFilter(column_name="Weight", numeric_min=100, numeric_max=200),
+            ...     EAVFilter(column_name="Status", string_value="ACTIVE"),
+            ... ]
+            >>> rows = client.select_from_eav(
+            ...     table_name="BT/Scrap Entry",
+            ...     column_names=["Weight", "Status", "Is Verified"],
+            ...     filters=filters,
+            ... )
+        """
+        # Look up the table ID from the table name
+        tables_response = self._query_table(
+            "eav_tables",
+            {
+                "tenant_id": f"eq.{self._tenant_id}",
+                "name": f"eq.{table_name}",
+                "limit": "1",
+            },
+        )
+        if not tables_response:
+            raise ValueError(f"Table '{table_name}' not found")
+        table_id = tables_response[0]["id"]
+
+        # Get all columns for the table to build name <-> id mappings
+        columns = self.get_eav_columns(table_id)
+        column_name_to_id = {col.name: col.eav_column_id for col in columns}
+        column_id_to_name = {col.eav_column_id: col.name for col in columns}
+
+        # Convert column names to column IDs
+        column_ids: Optional[List[str]] = None
+        if column_names:
+            column_ids = []
+            for name in column_names:
+                if name not in column_name_to_id:
+                    raise ValueError(
+                        f"Column '{name}' not found in table '{table_name}'"
+                    )
+                column_ids.append(column_name_to_id[name])
+
+        # Convert filters with column_name to filters with column_id
+        id_filters: Optional[List[EAVFilter]] = None
+        if filters:
+            id_filters = []
+            for f in filters:
+                if f.column_name is None:
+                    raise ValueError(
+                        "Filters for select_from_eav must use column_name, "
+                        "not column_id"
+                    )
+                if f.column_name not in column_name_to_id:
+                    raise ValueError(
+                        f"Filter column '{f.column_name}' not found in table "
+                        f"'{table_name}'"
+                    )
+                id_filters.append(
+                    EAVFilter(
+                        column_id=column_name_to_id[f.column_name],
+                        numeric_min=f.numeric_min,
+                        numeric_max=f.numeric_max,
+                        string_value=f.string_value,
+                        boolean_value=f.boolean_value,
+                    )
+                )
+
+        # Call the ID-based method
+        response_data = self.select_from_eav_id(
+            table_id=table_id,
+            column_ids=column_ids,
+            filters=id_filters,
+        )
+
+        # Convert column IDs back to names in the response
+        result: List[Dict[str, Any]] = []
+        for row in response_data:
+            converted_row: Dict[str, Any] = {}
+            for key, value in row.items():
+                if key == "id":
+                    converted_row[key] = value
+                elif key in column_id_to_name:
+                    converted_row[column_id_to_name[key]] = value
+                else:
+                    converted_row[key] = value
+            result.append(converted_row)
+
+        return result
