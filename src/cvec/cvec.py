@@ -7,7 +7,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin
 from urllib.request import Request, urlopen
 
-from cvec.models.agent_post import AgentPostRecommendation, AgentPostTag
+from cvec.models.agent_post import AgentPost, AgentPostRecommendation, AgentPostTag
 from cvec.models.eav_column import EAVColumn
 from cvec.models.eav_filter import EAVFilter
 from cvec.models.eav_table import EAVTable
@@ -444,18 +444,15 @@ class CVec:
         in the S3 bucket at the tenant's path.
         """
 
-        payload: Dict[str, Any] = {
-            "image_id": image_id,
-            "author": author,
-            "title": title,
-            "content": content,
-        }
-
-        if recommendations:
-            payload["recommendations"] = [rec.model_dump(mode="json") for rec in recommendations]
-
-        if tags:
-            payload["tags"] = [tag.model_dump(mode="json") for tag in tags]
+        post = AgentPost(
+            title=title,
+            author=author,
+            image_id=image_id,
+            content=content,
+            recommendations=recommendations,
+            tags=tags,
+        )
+        payload = post.model_dump(mode="json", exclude_none=True)
 
         self._make_request(
             "POST", "/api/agent_posts/add", json_data=payload

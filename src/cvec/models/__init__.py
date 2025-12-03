@@ -2,7 +2,6 @@ from .agent_post import (
     AgentPost,
     AgentPostRecommendation,
     AgentPostTag,
-    RecommendationType,
     Severity,
 )
 from .eav_column import EAVColumn
@@ -20,7 +19,6 @@ __all__ = [
     "EAVTable",
     "Metric",
     "MetricDataPoint",
-    "RecommendationType",
     "Severity",
     "Span",
 ]
