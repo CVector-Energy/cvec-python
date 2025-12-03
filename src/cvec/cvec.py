@@ -454,9 +454,7 @@ class CVec:
         )
         payload = post.model_dump(mode="json", exclude_none=True)
 
-        self._make_request(
-            "POST", "/api/agent_posts/add", json_data=payload
-        )
+        self._make_request("POST", "/api/agent_posts/add", json_data=payload)
 
     def _login_with_supabase(self, email: str, password: str) -> None:
         """

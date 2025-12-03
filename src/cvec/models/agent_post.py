@@ -11,6 +11,7 @@ class Severity(str, Enum):
     WARNING = "warning"
     INFO = "info"
 
+
 class AgentPostRecommendation(BaseModel):
     """
     Represents a recommendation for creating an agent post.
