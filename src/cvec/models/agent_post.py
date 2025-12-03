@@ -13,11 +13,6 @@ class Severity(str, Enum):
     WARNING = "warning"
     INFO = "info"
 
-
-# Deprecated: Use Severity instead
-RecommendationType = Severity
-
-
 class AgentPostRecommendation(BaseModel):
     """
     Represents a recommendation for creating an agent post.
