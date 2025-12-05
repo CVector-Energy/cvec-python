@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
       - name: Create GitHub App Token able to read all CVector repos
-        id: get-token
+        id: app
         uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ vars.APP_ID }}
@@ -30,4 +30,6 @@ jobs:
 
       - name: Run license check
         if: steps.find-deps.outputs.paths != ''
+        env:
+          GITHUB_TOKEN: ${{ steps.app.outputs.token }}
         run: uvx licensecheck@2025.1.0 --requirements-paths "${{ steps.find-deps.outputs.paths }}" --zero
