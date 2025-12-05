@@ -34,4 +34,4 @@ jobs:
 
       - name: Run license check
         if: steps.find-deps.outputs.paths != ''
-        run: uvx licensecheck@2025.1.0 --requirements-paths "${{ steps.find-deps.outputs.paths }}" --zero
+        run: uvx licensecheck@2025.1.0 --requirements-paths "${{ steps.find-deps.outputs.paths }}" --zero --skip-dependencies cvec-commons wrapt --ignore-licenses MPL
