@@ -2,9 +2,6 @@ name: Python License Check
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
   license-check:
@@ -17,8 +14,8 @@ jobs:
         id: get-token
         uses: actions/create-github-app-token@v2
         with:
-          app-id: ${{ inputs.app-id }}
-          private-key: ${{ inputs.app-private-key }}
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           permission-contents: read
 
