@@ -27,4 +27,13 @@ jobs:
           git config --global url."https://x-access-token:${{ steps.app.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: Run license check
-        run: find . \( -name 'pyproject.toml' -o -name 'requirements.txt' \) -print0 | xargs -0 -r uvx licensecheck@2025.1.0 --requirements-paths --zero --skip-dependencies cvec-commons wrapt --ignore-licenses MPL
+        run: |
+          SKIP_DEPS=(
+            cvec-commons  # Internal library, not published to PyPI
+            wrapt         # BSD-2-Clause license
+          )
+          find . \( -name 'pyproject.toml' -o -name 'requirements.txt' \) -print0 | \
+            xargs -0 -r uvx licensecheck@2025.1.0 --zero \
+              --skip-dependencies "${SKIP_DEPS[@]}" \
+              --ignore-licenses MPL \
+              --requirements-paths
