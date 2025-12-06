@@ -29,7 +29,7 @@ jobs:
       - name: Find Python dependency files
         id: find-deps
         run: |
-          files=$(find . -name 'pyproject.toml' -o -name 'requirements.txt' | paste -sd ',' -)
+          files=$(find . -name 'pyproject.toml' -o -name 'requirements.txt' | paste -sd ' ' -)
           echo "paths=$files" >> "$GITHUB_OUTPUT"
 
       - name: Run license check
