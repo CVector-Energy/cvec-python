@@ -26,12 +26,5 @@ jobs:
         run: |
           git config --global url."https://x-access-token:${{ steps.app.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
-      - name: Find Python dependency files
-        id: find-deps
-        run: |
-          files=$(find . -name 'pyproject.toml' -o -name 'requirements.txt' | paste -sd ' ' -)
-          echo "paths=$files" >> "$GITHUB_OUTPUT"
-
       - name: Run license check
-        if: steps.find-deps.outputs.paths != ''
-        run: uvx licensecheck@2025.1.0 --requirements-paths "${{ steps.find-deps.outputs.paths }}" --zero --skip-dependencies cvec-commons wrapt --ignore-licenses MPL
+        run: find . \( -name 'pyproject.toml' -o -name 'requirements.txt' \) -print0 | xargs -0 -r uvx licensecheck@2025.1.0 --requirements-paths --zero --skip-dependencies cvec-commons wrapt --ignore-licenses MPL
