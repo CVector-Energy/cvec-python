@@ -1,0 +1,37 @@
+name: Python License Check
+
+on:
+  push:
+
+jobs:
+  license-check:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
+      - name: Create GitHub App Token able to read all CVector repos
+        id: app
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          permission-contents: read
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@5a7eac68fb9809dea845d802897dc5c723910fa3 # v7.1.3
+
+      - name: Configure git to use app token for private repos
+        run: |
+          git config --global url."https://x-access-token:${{ steps.app.outputs.token }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Find Python dependency files
+        id: find-deps
+        run: |
+          files=$(find . -name 'pyproject.toml' -o -name 'requirements.txt' | paste -sd ',' -)
+          echo "paths=$files" >> "$GITHUB_OUTPUT"
+
+      - name: Run license check
+        if: steps.find-deps.outputs.paths != ''
+        run: uvx licensecheck@2025.1.0 --requirements-paths "${{ steps.find-deps.outputs.paths }}" --zero --skip-dependencies cvec-commons wrapt --ignore-licenses MPL
