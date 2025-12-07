@@ -419,6 +419,18 @@ tomli = {version = ">=1", markers = "python_version < \"3.11\""}
 dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "requests", "setuptools", "xmlschema"]
 
 [[package]]
+name = "python-claude"
+version = "0.1.1"
+description = "Python hooks for Claude Code"
+optional = false
+python-versions = ">=3.10"
+groups = ["dev"]
+files = [
+    {file = "python_claude-0.1.1-py3-none-any.whl", hash = "sha256:9f3c1a44be71cfd50f2a24b89c3a58b54c86c00b215733a5b48676fb8773c02f"},
+    {file = "python_claude-0.1.1.tar.gz", hash = "sha256:635c619894a2ab09243ddb353dd1cb7958df08ef11102b5708a9b303a7030209"},
+]
+
+[[package]]
 name = "ruff"
 version = "0.11.13"
 description = "An extremely fast Python linter and code formatter, written in Rust."
@@ -519,4 +531,4 @@ typing-extensions = ">=4.12.0"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10"
-content-hash = "3fee2fecee40b18a8858246aa2a73ffbb05f9a4a876f67da4d63891a98d97858"
+content-hash = "cdb8fee3d5cb8db8139ec67e3ce7a6a51905efcd550b2fc3473fa964f896f195"

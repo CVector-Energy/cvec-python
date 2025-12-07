@@ -1,12 +1,48 @@
 {
   "hooks": {
-    "PostToolUse": [
+    "SessionStart": [
       {
-        "matcher": "Write|Edit|MultiEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r .tool_input.file_path | { read file_path; if echo \"$file_path\" | grep -qE \"\\.(py)$\"; then scripts/lint.sh \"$file_path\"; fi; }"
+            "command": "poetry run python-claude session start"
+          },
+          {
+            "type": "command",
+            "command": "poetry run python-claude git status"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "poetry run python-claude ruff check"
+          },
+          {
+            "type": "command",
+            "command": "poetry run python-claude pytest"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "poetry run python-claude ruff format"
+          },
+          {
+            "type": "command",
+            "command": "poetry run python-claude edited"
+          },
+          {
+            "type": "command",
+            "command": "poetry run python-claude mypy"
           }
         ]
       }
