@@ -6,8 +6,8 @@ authors = [{ name = "CVector", email = "support@cvector.energy" }]
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "pydantic>=2.7.0,<3.0.0",
-    "pyarrow>=18.0.0,<20.0.0",
+    "pydantic>=2.12.0",
+    "pyarrow>=22.0.0",
 ]
 
 [tool.poetry]
