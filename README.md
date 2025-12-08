@@ -370,8 +370,8 @@ Example:
 from cvec import EAVFilter
 
 filters = [
-    EAVFilter(column_id="MTnaC", numeric_min=100, numeric_max=200),
-    EAVFilter(column_id="z09PL", string_value="ACTIVE"),
+    EAVFilter(column_id="abcd", numeric_min=100, numeric_max=200),
+    EAVFilter(column_id="efgh", string_value="ACTIVE"),
 ]
 
 rows = cvec.select_from_eav_id(
