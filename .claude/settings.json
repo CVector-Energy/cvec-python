@@ -19,7 +19,15 @@
         "hooks": [
           {
             "type": "command",
+            "command": "poetry run python-claude ruff format"
+          },
+          {
+            "type": "command",
             "command": "poetry run python-claude ruff check"
+          },
+          {
+            "type": "command",
+            "command": "poetry run python-claude mypy"
           },
           {
             "type": "command",
@@ -34,15 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "poetry run python-claude ruff format"
-          },
-          {
-            "type": "command",
             "command": "poetry run python-claude edited"
-          },
-          {
-            "type": "command",
-            "command": "poetry run python-claude mypy"
           }
         ]
       }
