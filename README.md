@@ -88,7 +88,7 @@ mygroup/myedge/compressor01/motor/power_kw
 
 ### Metric Data
 
-The main content for a metric is a set of points where the metric value changed. These are returned as a Pandas Dataframe with columns for name, time, value_double, value_string.
+The main content for a metric is a set of points where the metric value changed. These are returned with columns for name, time, value_double, value_string.
 
 To get all of the value changes for all metrics at 10am on 2025-05-14, run:
 
@@ -113,6 +113,17 @@ Example output:
 46257  mygroup/myedge/compressor01/motor/power_kw            2025-05-14 10:59:59.760000+00:00     523.40000         None
 
 [46257 rows x 4 columns]
+```
+#### Pandas Data Frames
+
+Use the `get_metric_arrow` function to efficiently load data into a pandas DataFrame like this:
+
+```python
+import pandas as pd
+import pyarrow as pa
+
+reader = pa.ipc.open_file(cvec.get_metric_arrow(names=["tag1", "tag2"]))
+df = reader.read_pandas()
 ```
 
 ### Adding Metric Data
