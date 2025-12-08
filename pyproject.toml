@@ -9,6 +9,7 @@ dependencies = [
     "pydantic>=2.12.0",
     "pyarrow>=22.0.0",
 ]
+license = "MIT"
 
 [tool.poetry]
 packages = [{ include = "cvec", from = "src" }]
