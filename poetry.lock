@@ -420,14 +420,14 @@ dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "requests
 
 [[package]]
 name = "python-claude"
-version = "0.1.1"
+version = "0.3.0"
 description = "Python hooks for Claude Code"
 optional = false
 python-versions = ">=3.10"
 groups = ["dev"]
 files = [
-    {file = "python_claude-0.1.1-py3-none-any.whl", hash = "sha256:9f3c1a44be71cfd50f2a24b89c3a58b54c86c00b215733a5b48676fb8773c02f"},
-    {file = "python_claude-0.1.1.tar.gz", hash = "sha256:635c619894a2ab09243ddb353dd1cb7958df08ef11102b5708a9b303a7030209"},
+    {file = "python_claude-0.3.0-py3-none-any.whl", hash = "sha256:8db3d9f6e1e856990edba8804c7cdb4d58cd4b9bbc0fdfc52bd6a200f7a47c94"},
+    {file = "python_claude-0.3.0.tar.gz", hash = "sha256:e6af9b7ef48bda054144ce43381f435956667968409a960dd972cf509c9b84a6"},
 ]
 
 [[package]]
@@ -531,4 +531,4 @@ typing-extensions = ">=4.12.0"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10"
-content-hash = "cdb8fee3d5cb8db8139ec67e3ce7a6a51905efcd550b2fc3473fa964f896f195"
+content-hash = "03bd148bb48b08d3133698652d00eb6e3d05fcaa7fa0e4a37b2c88a51a00f6d5"

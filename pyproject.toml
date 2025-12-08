@@ -18,7 +18,7 @@ packages = [{ include = "cvec", from = "src" }]
 pytest = "^8.3.5"
 mypy = "^1.15.0"
 ruff = "^0.11.10"
-python-claude = "^0.1.1"
+python-claude = "^0.3.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
