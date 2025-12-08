@@ -33,7 +33,7 @@ import cvec
 from datetime import datetime
 ```
 
-Construct the CVec client. The host, tenant, and api_key can be given through parameters to the constructor or from the environment variables CVEC_HOST, and CVEC_API_KEY:
+Construct the CVec client. The host and api_key can be given through parameters to the constructor or from the environment variables CVEC_HOST and CVEC_API_KEY:
 
 ```
 cvec = cvec.CVec()
@@ -209,9 +209,9 @@ The script automatically:
 
 The SDK provides an API client class named `CVec` with the following functions.
 
-## `__init__(?host, ?tenant, ?api_key, ?default_start_at, ?default_end_at)`
+## `__init__(?host, ?api_key, ?default_start_at, ?default_end_at)`
 
-Setup the SDK with the given host and API Key. The host and API key are loaded from environment variables CVEC_HOST, CVEC_API_KEY, if they are not given as arguments to the constructor. The `default_start_at` and `default_end_at` can provide a default query time interval for API methods.
+Setup the SDK with the given host and API Key. The host and API key are loaded from environment variables CVEC_HOST and CVEC_API_KEY if they are not given as arguments to the constructor. The tenant ID is automatically fetched from the host's `/config` endpoint. The `default_start_at` and `default_end_at` can provide a default query time interval for API methods.
 
 ## `get_spans(name, ?start_at, ?end_at, ?limit)`
 
@@ -272,3 +272,114 @@ Fetch actual data values from modeling metrics within a time range in Apache Arr
 - `end_at`: Optional end time for the query (uses class default if not specified)
 
 Returns Arrow IPC format data that can be read using `pyarrow.ipc.open_file()`.
+
+## `get_eav_tables()`
+
+Get all EAV (Entity-Attribute-Value) tables for the tenant. EAV tables store semi-structured data where each row represents an entity with flexible attributes.
+
+Returns a list of `EAVTable` objects, each containing:
+- `id`: The table's UUID
+- `tenant_id`: The tenant ID
+- `name`: Human-readable table name
+- `created_at`: When the table was created
+- `updated_at`: When the table was last updated
+
+Example:
+```python
+tables = cvec.get_eav_tables()
+for table in tables:
+    print(f"{table.name} (id: {table.id})")
+```
+
+## `get_eav_columns(table_id)`
+
+Get all columns for a specific EAV table.
+
+- `table_id`: The UUID of the EAV table
+
+Returns a list of `EAVColumn` objects, each containing:
+- `eav_table_id`: The parent table's UUID
+- `eav_column_id`: The column's ID (used for queries)
+- `name`: Human-readable column name
+- `type`: Data type (`"number"`, `"string"`, or `"boolean"`)
+- `created_at`: When the column was created
+
+Example:
+```python
+columns = cvec.get_eav_columns("00000000-0000-0000-0000-000000000000")
+for column in columns:
+    print(f"  {column.name} ({column.type}, id: {column.eav_column_id})")
+```
+
+## `select_from_eav(table_name, ?column_names, ?filters)`
+
+Query pivoted data from EAV tables using human-readable names. This is the recommended method for most use cases as it allows you to work with table and column names instead of UUIDs.
+
+- `table_name`: Name of the EAV table to query
+- `column_names`: Optional list of column names to include. If `None`, all columns are returned.
+- `filters`: Optional list of `EAVFilter` objects to filter results
+
+Each `EAVFilter` must use `column_name` and can specify:
+- `column_name`: The column name to filter on (required)
+- `numeric_min`: Minimum numeric value (inclusive)
+- `numeric_max`: Maximum numeric value (exclusive)
+- `string_value`: Exact string value to match
+- `boolean_value`: Boolean value to match
+
+Returns a list of dictionaries (maximum 1000 rows), each representing a row with an `id` field and fields for each requested column.
+
+Example:
+```python
+from cvec import CVec, EAVFilter
+
+# Query with filters
+filters = [
+    EAVFilter(column_name="Weight", numeric_min=100, numeric_max=200),
+    EAVFilter(column_name="Status", string_value="ACTIVE"),
+]
+
+rows = cvec.select_from_eav(
+    table_name="Production Data",
+    column_names=["Date", "Weight", "Status"],
+    filters=filters,
+)
+
+for row in rows:
+    print(f"ID: {row['id']}, Date: {row['Date']}, Weight: {row['Weight']}")
+```
+
+## `select_from_eav_id(table_id, ?column_ids, ?filters)`
+
+Query pivoted data from EAV tables using table and column IDs directly. This is a lower-level method for cases where you already have the UUIDs and want to avoid name lookups.
+
+- `table_id`: UUID of the EAV table to query
+- `column_ids`: Optional list of column IDs to include. If `None`, all columns are returned.
+- `filters`: Optional list of `EAVFilter` objects to filter results
+
+Each `EAVFilter` must use `column_id` and can specify:
+- `column_id`: The column ID to filter on (required)
+- `numeric_min`: Minimum numeric value (inclusive)
+- `numeric_max`: Maximum numeric value (exclusive)
+- `string_value`: Exact string value to match
+- `boolean_value`: Boolean value to match
+
+Returns a list of dictionaries (maximum 1000 rows), each representing a row with an `id` field and fields for each column ID.
+
+Example:
+```python
+from cvec import EAVFilter
+
+filters = [
+    EAVFilter(column_id="MTnaC", numeric_min=100, numeric_max=200),
+    EAVFilter(column_id="z09PL", string_value="ACTIVE"),
+]
+
+rows = cvec.select_from_eav_id(
+    table_id="00000000-0000-0000-0000-000000000000",
+    column_ids=["abcd", "efgh", "ijkl"],
+    filters=filters,
+)
+
+for row in rows:
+    print(f"ID: {row['id']}, Values: {row}")
+```
