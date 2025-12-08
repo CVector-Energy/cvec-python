@@ -345,7 +345,7 @@ rows = cvec.select_from_eav(
 )
 
 for row in rows:
-    print(f"ID: {row['id']}, Date: {row['Date']}, Weight: {row['Weight']}")
+    print(row)
 ```
 
 ## `select_from_eav_id(table_id, ?column_ids, ?filters)`
