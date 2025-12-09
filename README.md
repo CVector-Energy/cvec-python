@@ -363,7 +363,7 @@ Each `EAVFilter` must use `column_id` and can specify:
 - `string_value`: Exact string value to match
 - `boolean_value`: Boolean value to match
 
-Returns a list of dictionaries (up to 1000), each representing a row with an `id` field and fields for each column ID.
+Returns a list of dictionaries (up to 1000), each representing a row. Each row has a field for each column plus an `id` (the "row ID").
 
 Example:
 ```python
