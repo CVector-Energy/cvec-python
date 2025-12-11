@@ -1,0 +1,17 @@
+name: Python License Check
+
+on:
+  push:
+
+jobs:
+  license-check:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
+      - name: Check Python licenses
+        uses: CVector-Energy/pyproject-check-python@main
+        with:
+          app-id: ${{ vars.APP_ID }}
+          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
