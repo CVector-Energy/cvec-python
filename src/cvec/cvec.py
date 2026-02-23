@@ -435,6 +435,7 @@ class CVec:
         content: Optional[str] = None,
         recommendations: Optional[List[AgentPostRecommendation]] = None,
         tags: Optional[List[AgentPostTag]] = None,
+        is_private: bool = True,
     ) -> None:
         """
         Add an agent post.
@@ -442,6 +443,15 @@ class CVec:
         Note: If image_id is provided, the image must be uploaded to S3 beforehand.
         The image_id should be the UUID used as the filename (without .png extension)
         in the S3 bucket at the tenant's path.
+
+        Args:
+            title: Post title
+            author: Post author
+            image_id: Optional UUID of the uploaded image
+            content: Optional post content
+            recommendations: Optional list of recommendations
+            tags: Optional list of tags
+            is_private: Whether the post is private (only visible to superadmins). Defaults to True.
         """
 
         post = AgentPost(
@@ -451,6 +461,7 @@ class CVec:
             content=content,
             recommendations=recommendations,
             tags=tags,
+            is_private=is_private,
         )
         payload = post.model_dump(mode="json", exclude_none=True)
 

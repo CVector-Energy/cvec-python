@@ -41,3 +41,4 @@ class AgentPost(BaseModel):
     image_id: Optional[str] = None
     recommendations: Optional[List[AgentPostRecommendation]] = None
     tags: Optional[List[AgentPostTag]] = None
+    is_private: bool = False
