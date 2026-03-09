@@ -4,14 +4,14 @@ on:
   pull_request:
     paths:
       - .github/workflows/ci.yml
-      - poetry.lock
+      - uv.lock
       - pyproject.toml
       - src/**
       - tests/**
   push:
     paths:
       - .github/workflows/ci.yml
-      - poetry.lock
+      - uv.lock
       - pyproject.toml
       - src/**
       - tests/**

@@ -5,11 +5,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "poetry run python-claude session start"
+            "command": "uv run python-claude session start"
           },
           {
             "type": "command",
-            "command": "poetry run python-claude git status"
+            "command": "uv run python-claude git status"
           }
         ]
       }
@@ -19,19 +19,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "poetry run python-claude ruff format"
+            "command": "uv run python-claude ruff format"
           },
           {
             "type": "command",
-            "command": "poetry run python-claude ruff check"
+            "command": "uv run python-claude ruff check"
           },
           {
             "type": "command",
-            "command": "poetry run python-claude mypy"
+            "command": "uv run python-claude mypy"
           },
           {
             "type": "command",
-            "command": "poetry run python-claude pytest"
+            "command": "uv run python-claude pytest"
           }
         ]
       }
@@ -42,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "poetry run python-claude edited"
+            "command": "uv run python-claude edited"
           }
         ]
       }
