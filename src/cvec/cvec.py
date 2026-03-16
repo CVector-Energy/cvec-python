@@ -4,6 +4,8 @@ import logging
 import os
 import time
 import zlib
+
+import brotli  # type: ignore[import-untyped]
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from urllib.error import HTTPError, URLError
@@ -113,7 +115,7 @@ class CVec:
             "Authorization": f"Bearer {self._access_token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "Accept-Encoding": "gzip, deflate",
+            "Accept-Encoding": "br, gzip, deflate",
         }
 
     @staticmethod
@@ -125,7 +127,9 @@ class CVec:
         """
         raw = response.read()
         encoding = response.headers.get("Content-Encoding", "")
-        if encoding == "gzip":
+        if encoding == "br":
+            raw = brotli.decompress(raw)
+        elif encoding == "gzip":
             raw = gzip.decompress(raw)
         elif encoding == "deflate":
             raw = zlib.decompress(raw)

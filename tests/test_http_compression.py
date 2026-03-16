@@ -1,10 +1,12 @@
-"""Tests for HTTP compression support (gzip/deflate)."""
+"""Tests for HTTP compression support (gzip/deflate/brotli)."""
 
 import gzip
 import json
 import zlib
 from typing import Any
 from unittest.mock import Mock, patch
+
+import brotli  # type: ignore[import-untyped]
 
 from cvec import CVec
 
@@ -63,7 +65,7 @@ class TestHttpCompression:
         mock_fetch_key: Any,
         mock_login: Any,
     ) -> None:
-        """Verify Accept-Encoding: gzip, deflate is present in request headers."""
+        """Verify Accept-Encoding includes br, gzip, deflate."""
         client = _create_client()
 
         mock_response = _make_mock_response(b"[]")
@@ -72,7 +74,7 @@ class TestHttpCompression:
         client.get_metrics()
 
         req = mock_urlopen.call_args[0][0]
-        assert req.get_header("Accept-encoding") == "gzip, deflate"
+        assert req.get_header("Accept-encoding") == "br, gzip, deflate"
 
     @patch.object(CVec, "_login_with_supabase", return_value=None)
     @patch.object(
@@ -196,3 +198,29 @@ class TestHttpCompression:
         result = client._make_request("GET", "/api/metrics/data/arrow")
         assert isinstance(result, bytes)
         assert result == arrow_bytes
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(
+        CVec,
+        "_fetch_config",
+        autospec=True,
+        side_effect=mock_fetch_config_side_effect,
+    )
+    @patch("cvec.cvec.urlopen")
+    def test_brotli_response_decompressed(
+        self,
+        mock_urlopen: Any,
+        mock_fetch_key: Any,
+        mock_login: Any,
+    ) -> None:
+        """Mock a brotli-compressed JSON response, verify it is decompressed."""
+        client = _create_client()
+
+        data = [{"id": 4, "name": "metric4"}]
+        compressed = brotli.compress(json.dumps(data).encode("utf-8"))
+        mock_response = _make_mock_response(compressed, content_encoding="br")
+        mock_urlopen.return_value = mock_response
+
+        result = client.get_metrics()
+        assert len(result) == 1
+        assert result[0].name == "metric4"
