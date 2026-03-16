@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 
+MAX_CACHE_ENTRIES = 100
+
+
 @dataclass
 class CacheEntry:
     """A cached HTTP response."""
@@ -12,6 +15,11 @@ class CacheEntry:
     etag: Optional[str]
     max_age: int
     stored_at: float
+
+    @property
+    def expires_at(self) -> float:
+        """Monotonic time when this entry expires."""
+        return self.stored_at + self.max_age
 
 
 def parse_max_age(header: Optional[str]) -> Optional[int]:

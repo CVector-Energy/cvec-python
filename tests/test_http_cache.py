@@ -85,6 +85,10 @@ class TestCacheEntry:
         entry = CacheEntry(data=[], etag=None, max_age=60, stored_at=0.0)
         assert entry.etag is None
 
+    def test_expires_at(self) -> None:
+        entry = CacheEntry(data=[], etag=None, max_age=300, stored_at=100.0)
+        assert entry.expires_at == 400.0
+
 
 class TestHttpCache:
     """Integration tests for caching in _make_request."""
@@ -351,3 +355,53 @@ class TestHttpCache:
         client.get_metric_data(names=["m1"])
 
         assert len(client._cache) == 2
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(
+        CVec,
+        "_fetch_config",
+        autospec=True,
+        side_effect=mock_fetch_config_side_effect,
+    )
+    @patch("cvec.cvec.urlopen")
+    def test_cache_evicts_when_full(
+        self,
+        mock_urlopen: Any,
+        mock_fetch_key: Any,
+        mock_login: Any,
+    ) -> None:
+        """When cache is full, the entry with earliest expiration is evicted."""
+        client = _create_client()
+
+        now = time.monotonic()
+
+        # Pre-fill cache to max size with entries that expire at different times
+        for i in range(100):
+            url = f"https://test.example.com/api/item/{i}"
+            client._cache[url] = CacheEntry(
+                data={"id": i},
+                etag=f'"etag{i}"',
+                max_age=300,
+                # Entry 50 expires first (stored earliest)
+                stored_at=now - 200 if i == 50 else now,
+            )
+
+        assert len(client._cache) == 100
+
+        # Add one more entry via a real request
+        data = [{"id": 999, "name": "new_metric"}]
+        mock_response = _make_mock_response(
+            json.dumps(data).encode("utf-8"),
+            etag='"etag_new"',
+            cache_control="max-age=300",
+        )
+        mock_urlopen.return_value = mock_response
+
+        client.get_metrics()
+
+        # Cache should still be at 100 (evicted one to make room)
+        assert len(client._cache) == 100
+        # Entry 50 (earliest expiration) should have been evicted
+        assert "https://test.example.com/api/item/50" not in client._cache
+        # New entry should be present
+        assert any("metrics" in url for url in client._cache)

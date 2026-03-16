@@ -12,7 +12,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin
 from urllib.request import Request, urlopen
 
-from cvec.http_cache import CacheEntry, parse_max_age
+from cvec.http_cache import MAX_CACHE_ENTRIES, CacheEntry, parse_max_age
 
 from cvec.models.agent_post import AgentPost, AgentPostRecommendation, AgentPostTag
 from cvec.models.eav_column import EAVColumn
@@ -152,6 +152,11 @@ class CVec:
             cache_control = response.headers.get("Cache-Control", "")
             max_age = parse_max_age(cache_control)
             if max_age is not None:
+                if url not in self._cache and len(self._cache) >= MAX_CACHE_ENTRIES:
+                    worst_url = min(
+                        self._cache, key=lambda u: self._cache[u].expires_at
+                    )
+                    del self._cache[worst_url]
                 etag = response.headers.get("ETag", "") or None
                 self._cache[url] = CacheEntry(
                     data=parsed,
