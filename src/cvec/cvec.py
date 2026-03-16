@@ -1,11 +1,18 @@
+import gzip
 import json
 import logging
 import os
+import time
+import zlib
+
+import brotli  # type: ignore[import-untyped]
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin
 from urllib.request import Request, urlopen
+
+from cvec.http_cache import MAX_CACHE_ENTRIES, CacheEntry, parse_max_age
 
 from cvec.models.agent_post import AgentPost, AgentPostRecommendation, AgentPostTag
 from cvec.models.eav_column import EAVColumn
@@ -52,6 +59,9 @@ class CVec:
         self._refresh_token = None
         self._publishable_key = None
         self._api_key = api_key or os.environ.get("CVEC_API_KEY")
+
+        # HTTP cache for GET requests
+        self._cache: Dict[str, CacheEntry] = {}
 
         if not self.host:
             raise ValueError(
@@ -105,7 +115,57 @@ class CVec:
             "Authorization": f"Bearer {self._access_token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
+            "Accept-Encoding": "br, gzip, deflate",
         }
+
+    @staticmethod
+    def _read_response(response: Any) -> tuple[bytes, str]:
+        """Read and decompress response body.
+
+        Returns:
+            Tuple of (decompressed data, content type)
+        """
+        raw = response.read()
+        encoding = response.headers.get("Content-Encoding", "")
+        if encoding == "br":
+            raw = brotli.decompress(raw)
+        elif encoding == "gzip":
+            raw = gzip.decompress(raw)
+        elif encoding == "deflate":
+            raw = zlib.decompress(raw)
+        content_type: str = response.headers.get("content-type", "")
+        return raw, content_type
+
+    @staticmethod
+    def _parse_response_body(response_data: bytes, content_type: str) -> Any:
+        """Parse response body based on content type."""
+        if content_type == "application/vnd.apache.arrow.stream":
+            return response_data
+        return json.loads(response_data.decode("utf-8"))
+
+    def _process_response(self, response: Any, url: str, method: str) -> Any:
+        """Read, decompress, parse, and optionally cache a response."""
+        response_data, content_type = self._read_response(response)
+        parsed = self._parse_response_body(response_data, content_type)
+
+        if method == "GET":
+            cache_control = response.headers.get("Cache-Control", "")
+            max_age = parse_max_age(cache_control)
+            if max_age is not None:
+                if url not in self._cache and len(self._cache) >= MAX_CACHE_ENTRIES:
+                    worst_url = min(
+                        self._cache, key=lambda u: self._cache[u].expires_at
+                    )
+                    del self._cache[worst_url]
+                etag = response.headers.get("ETag", "") or None
+                self._cache[url] = CacheEntry(
+                    data=parsed,
+                    etag=etag,
+                    max_age=max_age,
+                    stored_at=time.monotonic(),
+                )
+
+        return parsed
 
     def _make_request(
         self,
@@ -124,6 +184,17 @@ class CVec:
             if filtered_params:
                 url = f"{url}?{urlencode(filtered_params)}"
 
+        # Check cache for GET requests
+        if method == "GET" and url in self._cache:
+            entry = self._cache[url]
+            if time.monotonic() - entry.stored_at < entry.max_age:
+                return entry.data
+            # Stale entry with ETag: use conditional request
+            if entry.etag:
+                if headers is None:
+                    headers = {}
+                headers["If-None-Match"] = entry.etag
+
         request_headers = self._get_headers()
         if headers:
             request_headers.update(headers)
@@ -140,16 +211,16 @@ class CVec:
                 url, data=request_body, headers=request_headers, method=method
             )
             with urlopen(req) as response:
-                response_data = response.read()
-                content_type = response.headers.get("content-type", "")
-
-                if content_type == "application/vnd.apache.arrow.stream":
-                    return response_data
-                return json.loads(response_data.decode("utf-8"))
+                return self._process_response(response, url, method)
 
         try:
             return make_http_request()
         except HTTPError as e:
+            # Handle 304 Not Modified
+            if e.code == 304 and method == "GET" and url in self._cache:
+                entry = self._cache[url]
+                entry.stored_at = time.monotonic()
+                return entry.data
             # Handle 401 Unauthorized with token refresh
             if e.code == 401 and self._access_token and self._refresh_token:
                 try:
@@ -164,12 +235,7 @@ class CVec:
                         url, data=request_body, headers=request_headers, method=method
                     )
                     with urlopen(req) as response:
-                        response_data = response.read()
-                        content_type = response.headers.get("content-type", "")
-
-                        if content_type == "application/vnd.apache.arrow.stream":
-                            return response_data
-                        return json.loads(response_data.decode("utf-8"))
+                        return self._process_response(response, url, method)
                 except (HTTPError, URLError, ValueError, KeyError) as refresh_error:
                     logger.warning(
                         "Token refresh failed, continuing with original request: %s",
