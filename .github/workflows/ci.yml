@@ -27,7 +27,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
-      - uses: CVector-Energy/python-test@uv
+      - uses: CVector-Energy/python-test@b956bb181831f0ddca3496505d5823c678a926e7 # v1.1.0
         with:
           python-version: ${{ matrix.python-version }}
           src-dirs: .
