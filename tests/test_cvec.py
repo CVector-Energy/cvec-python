@@ -1,7 +1,11 @@
 import io
 import os
+import socket
+import threading
+import time
 from datetime import datetime
 from typing import Any
+from urllib.error import URLError
 from unittest.mock import patch
 
 import pyarrow as pa  # type: ignore[import-untyped]
@@ -897,3 +901,86 @@ class TestCVecSelectFromEAVId:
         )
 
         assert result == []
+
+
+class TestCVecTimeout:
+    """Test that HTTP requests respect the timeout parameter."""
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
+    def test_default_timeout_is_set(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test that the default timeout is 30 seconds."""
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+        )
+        assert client.timeout == 30
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
+    def test_custom_timeout_is_set(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test that a custom timeout can be provided."""
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+            timeout=60,
+        )
+        assert client.timeout == 60
+
+    @patch.object(CVec, "_login_with_supabase", return_value=None)
+    @patch.object(
+        CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
+    )
+    def test_none_timeout_disables_timeout(
+        self, mock_fetch_key: Any, mock_login: Any
+    ) -> None:
+        """Test that timeout=None disables the timeout."""
+        client = CVec(
+            host="test_host",
+            api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+            timeout=None,
+        )
+        assert client.timeout is None
+
+    def test_make_request_times_out_on_hung_server(self) -> None:
+        """Test that _make_request raises URLError when the server hangs."""
+        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.bind(("127.0.0.1", 0))
+        srv.listen(1)
+        port = srv.getsockname()[1]
+
+        def accept_and_hang() -> None:
+            conn, _ = srv.accept()
+            time.sleep(30)
+            conn.close()
+            srv.close()
+
+        t = threading.Thread(target=accept_and_hang, daemon=True)
+        t.start()
+
+        with patch.object(CVec, "_login_with_supabase", return_value=None), \
+             patch.object(CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect):
+            client = CVec(
+                host=f"http://127.0.0.1:{port}",
+                api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
+                timeout=2,
+            )
+            client._access_token = "fake_token"
+
+            start = time.time()
+            with pytest.raises((URLError, TimeoutError)):
+                client._make_request("GET", "/api/test")
+            elapsed = time.time() - start
+
+            assert elapsed < 5, f"Expected timeout around 2s, took {elapsed:.1f}s"
+
+        srv.close()

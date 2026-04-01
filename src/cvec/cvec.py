@@ -42,10 +42,12 @@ class CVec:
         default_start_at: Optional[datetime] = None,
         default_end_at: Optional[datetime] = None,
         api_key: Optional[str] = None,
+        timeout: Optional[float] = 30,
     ) -> None:
         self.host = host or os.environ.get("CVEC_HOST")
         self.default_start_at = default_start_at
         self.default_end_at = default_end_at
+        self.timeout = timeout
 
         # Supabase authentication
         self._access_token = None
@@ -139,7 +141,7 @@ class CVec:
             req = Request(
                 url, data=request_body, headers=request_headers, method=method
             )
-            with urlopen(req) as response:
+            with urlopen(req, timeout=self.timeout) as response:
                 response_data = response.read()
                 content_type = response.headers.get("content-type", "")
 
@@ -163,7 +165,7 @@ class CVec:
                     req = Request(
                         url, data=request_body, headers=request_headers, method=method
                     )
-                    with urlopen(req) as response:
+                    with urlopen(req, timeout=self.timeout) as response:
                         response_data = response.read()
                         content_type = response.headers.get("content-type", "")
 
@@ -491,7 +493,7 @@ class CVec:
         request_body = json.dumps(payload).encode("utf-8")
         req = Request(supabase_url, data=request_body, headers=headers, method="POST")
 
-        with urlopen(req) as response:
+        with urlopen(req, timeout=self.timeout) as response:
             response_data = response.read()
             data = json.loads(response_data.decode("utf-8"))
 
@@ -520,7 +522,7 @@ class CVec:
         request_body = json.dumps(payload).encode("utf-8")
         req = Request(supabase_url, data=request_body, headers=headers, method="POST")
 
-        with urlopen(req) as response:
+        with urlopen(req, timeout=self.timeout) as response:
             response_data = response.read()
             data = json.loads(response_data.decode("utf-8"))
 
@@ -543,7 +545,7 @@ class CVec:
             config_url = f"{self.host}/config"
             req = Request(config_url, method="GET")
 
-            with urlopen(req) as response:
+            with urlopen(req, timeout=self.timeout) as response:
                 response_data = response.read()
                 config_data = json.loads(response_data.decode("utf-8"))
 
@@ -598,7 +600,7 @@ class CVec:
         def make_rpc_request() -> Any:
             """Inner function to make the actual RPC request."""
             req = Request(url, data=request_body, headers=headers, method="POST")
-            with urlopen(req) as response:
+            with urlopen(req, timeout=self.timeout) as response:
                 response_data = response.read()
                 return json.loads(response_data.decode("utf-8"))
 
@@ -616,7 +618,7 @@ class CVec:
                     req = Request(
                         url, data=request_body, headers=headers, method="POST"
                     )
-                    with urlopen(req) as response:
+                    with urlopen(req, timeout=self.timeout) as response:
                         response_data = response.read()
                         return json.loads(response_data.decode("utf-8"))
                 except (HTTPError, URLError, ValueError, KeyError) as refresh_error:
@@ -665,7 +667,7 @@ class CVec:
         def make_query_request() -> Any:
             """Inner function to make the actual query request."""
             req = Request(url, headers=headers, method="GET")
-            with urlopen(req) as response:
+            with urlopen(req, timeout=self.timeout) as response:
                 response_data = response.read()
                 return json.loads(response_data.decode("utf-8"))
 
@@ -681,7 +683,7 @@ class CVec:
 
                     # Retry the request
                     req = Request(url, headers=headers, method="GET")
-                    with urlopen(req) as response:
+                    with urlopen(req, timeout=self.timeout) as response:
                         response_data = response.read()
                         return json.loads(response_data.decode("utf-8"))
                 except (HTTPError, URLError, ValueError, KeyError) as refresh_error:
