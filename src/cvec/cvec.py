@@ -36,6 +36,7 @@ class CVec:
     host: Optional[str]
     default_start_at: Optional[datetime]
     default_end_at: Optional[datetime]
+    timeout: Optional[float]
     # Supabase authentication
     _access_token: Optional[str]
     _refresh_token: Optional[str]

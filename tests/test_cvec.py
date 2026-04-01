@@ -5,7 +5,6 @@ import threading
 import time
 from datetime import datetime
 from typing import Any
-from urllib.error import URLError
 from unittest.mock import patch
 
 import pyarrow as pa  # type: ignore[import-untyped]
@@ -980,7 +979,7 @@ class TestCVecTimeout:
             client._access_token = "fake_token"
 
             start = time.time()
-            with pytest.raises((URLError, TimeoutError)):
+            with pytest.raises(OSError):
                 client._make_request("GET", "/api/test")
             elapsed = time.time() - start
 
