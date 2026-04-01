@@ -910,9 +910,7 @@ class TestCVecTimeout:
     @patch.object(
         CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
     )
-    def test_default_timeout_is_set(
-        self, mock_fetch_key: Any, mock_login: Any
-    ) -> None:
+    def test_default_timeout_is_set(self, mock_fetch_key: Any, mock_login: Any) -> None:
         """Test that the default timeout is 30 seconds."""
         client = CVec(
             host="test_host",
@@ -924,9 +922,7 @@ class TestCVecTimeout:
     @patch.object(
         CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect
     )
-    def test_custom_timeout_is_set(
-        self, mock_fetch_key: Any, mock_login: Any
-    ) -> None:
+    def test_custom_timeout_is_set(self, mock_fetch_key: Any, mock_login: Any) -> None:
         """Test that a custom timeout can be provided."""
         client = CVec(
             host="test_host",
@@ -967,8 +963,15 @@ class TestCVecTimeout:
         t = threading.Thread(target=accept_and_hang, daemon=True)
         t.start()
 
-        with patch.object(CVec, "_login_with_supabase", return_value=None), \
-             patch.object(CVec, "_fetch_config", autospec=True, side_effect=mock_fetch_config_side_effect):
+        with (
+            patch.object(CVec, "_login_with_supabase", return_value=None),
+            patch.object(
+                CVec,
+                "_fetch_config",
+                autospec=True,
+                side_effect=mock_fetch_config_side_effect,
+            ),
+        ):
             client = CVec(
                 host=f"http://127.0.0.1:{port}",
                 api_key="cva_hHs0CbkKALxMnxUdI9hanF0TBPvvvr1HjG6O",
