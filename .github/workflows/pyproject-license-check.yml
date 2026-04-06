@@ -3,6 +3,10 @@ name: Python License Check
 on:
   push:
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   license-check:
     runs-on: ubuntu-24.04
@@ -10,8 +14,21 @@ jobs:
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        with:
+          role-to-assume: arn:aws:iam::904233131484:role/CvecCodeArtifactInternalReadOnlyAccess
+          aws-region: us-east-1
+
+      - name: Configure CodeArtifact
+        run: |
+          CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain cvector --domain-owner 904233131484 --region us-east-1 --query authorizationToken --output text)
+          echo "::add-mask::$CODEARTIFACT_AUTH_TOKEN"
+          echo "UV_INDEX_CVECTOR_INTERNAL_USERNAME=aws" >> $GITHUB_ENV
+          echo "UV_INDEX_CVECTOR_INTERNAL_PASSWORD=${CODEARTIFACT_AUTH_TOKEN}" >> $GITHUB_ENV
+
       - name: Check Python licenses
-        uses: CVector-Energy/pyproject-license-check@ac23f69dcd61c01ec56250584ebfc0e0235c1737 # v0.2.0
+        uses: CVector-Energy/pyproject-license-check@075858d33ce078e040088fbef523db1e0cfd2d63 # v0.3.0
         with:
           app-id: ${{ vars.APP_ID }}
           app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
