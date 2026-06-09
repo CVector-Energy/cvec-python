@@ -6,9 +6,13 @@ on:
 jobs:
   license-check:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          persist-credentials: false
 
       - name: Check Python licenses
         uses: CVector-Energy/pyproject-license-check@977092b2a13e0766082dfdfb7c57b67985c675e8 # main
