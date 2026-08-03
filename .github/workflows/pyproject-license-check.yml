@@ -30,7 +30,19 @@ jobs:
           echo "UV_INDEX_CVECTOR_INTERNAL_PASSWORD=${CODEARTIFACT_AUTH_TOKEN}" >> $GITHUB_ENV
 
       - name: Check Python licenses
-        uses: CVector-Energy/pyproject-license-check@99abe540546924a1aa9e4a238bc2b29fc2185a6a # v0.4.0
+        uses: CVector-Energy/pyproject-license-check@d56c86ec80d397b5de30e3915e217c50112da00b # v0.5.1
         with:
           app-id: ${{ vars.APP_ID }}
           app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          # Source-aware license resolution (editable projects, private indexes, exact artifacts) is still unreleased, and the `allowed-license-references` and `license-overrides` inputs below depend on it. Move back to a tagged LicenseCheck release once the pull request lands.
+          licensecheck-version: git+https://github.com/FHPythonUtils/LicenseCheck.git@3d26581de610b08a44e697d7d5bb1ee6af6639a2 # LicenseCheck#151
+          allowed-license-references: LicenseRef-NVIDIA-Proprietary LicenseRef-NVIDIA-SOFTWARE-LICENSE
+          license-overrides: |
+            # Public Domain/BSD; the wheel excludes the GPL-covered Emacs mode.
+            "docutils==0.22.4" = "BSD-2-Clause"
+            # BSD-3-Clause; the wheel publishes the full license text without an SPDX identifier.
+            "us==3.2.0" = "BSD-3-Clause"
+            # NVIDIA CUDA Toolkit EULA; reviewed at 13.0.3.0.
+            "cuda-toolkit==13.0.3.0" = "LicenseRef-NVIDIA-Proprietary"
+            # NVIDIA CUDA Toolkit EULA; reviewed at 0.8.1.
+            "nvidia-cusparselt-cu13==0.8.1" = "LicenseRef-NVIDIA-Proprietary"
