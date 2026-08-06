@@ -46,3 +46,5 @@ jobs:
             "cuda-toolkit==13.0.3.0" = "LicenseRef-NVIDIA-Proprietary"
             # NVIDIA CUDA Toolkit EULA; reviewed at 0.8.1.
             "nvidia-cusparselt-cu13==0.8.1" = "LicenseRef-NVIDIA-Proprietary"
+            # PSF-2.0 (Python Software Foundation License); the wheel metadata has no SPDX identifier. Windows-only certbot dependency.
+            "pywin32==312" = "PSF-2.0"
