@@ -46,3 +46,7 @@ jobs:
             "cuda-toolkit==13.0.3.0" = "LicenseRef-NVIDIA-Proprietary"
             # NVIDIA CUDA Toolkit EULA; reviewed at 0.8.1.
             "nvidia-cusparselt-cu13==0.8.1" = "LicenseRef-NVIDIA-Proprietary"
+            # PSF-2.0 (Python Software Foundation License); the wheel metadata has no SPDX identifier. Windows-only certbot dependency.
+            "pywin32==312" = "PSF-2.0"
+            # Apache-2.0; 1.7.5 publishes no CPython 3.14 wheel, so the audit resolves the private-index sdist and cannot read wheel metadata.
+            "cvxpy==1.7.5" = "Apache-2.0"
