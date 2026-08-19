@@ -26,8 +26,8 @@ jobs:
         run: |
           CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain cvector --domain-owner 904233131484 --region us-east-1 --query authorizationToken --output text)
           echo "::add-mask::$CODEARTIFACT_AUTH_TOKEN"
-          echo "UV_INDEX_CVECTOR_INTERNAL_USERNAME=aws" >> $GITHUB_ENV
-          echo "UV_INDEX_CVECTOR_INTERNAL_PASSWORD=${CODEARTIFACT_AUTH_TOKEN}" >> $GITHUB_ENV
+          echo "UV_INDEX_CVECTOR_INTERNAL_USERNAME=aws" >> "$GITHUB_ENV"
+          echo "UV_INDEX_CVECTOR_INTERNAL_PASSWORD=${CODEARTIFACT_AUTH_TOKEN}" >> "$GITHUB_ENV"
 
       - name: Check Python licenses
         uses: CVector-Energy/pyproject-license-check@d56c86ec80d397b5de30e3915e217c50112da00b # v0.5.1
