@@ -34,6 +34,8 @@ jobs:
         with:
           app-id: ${{ vars.APP_ID }}
           app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          # A project with no third-party runtime dependencies has no licenses to check, and LicenseCheck reports that as exit code 3, which the action fails on by default. Accepting it hides nothing: a dependency that cannot be resolved is still listed, with no license, and fails with exit code 1 — as does an incompatible license. Exit code 3 only ever means the project declares no dependencies at all.
+          allow-no-packages: true
           # Source-aware license resolution (editable projects, private indexes, exact artifacts) is still unreleased, and the `allowed-license-references` and `license-overrides` inputs below depend on it. Move back to a tagged LicenseCheck release once the pull request lands.
           licensecheck-version: git+https://github.com/FHPythonUtils/LicenseCheck.git@3d26581de610b08a44e697d7d5bb1ee6af6639a2 # LicenseCheck#151
           allowed-license-references: LicenseRef-NVIDIA-Proprietary LicenseRef-NVIDIA-SOFTWARE-LICENSE
