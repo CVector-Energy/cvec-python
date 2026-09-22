@@ -30,7 +30,7 @@ jobs:
           echo "UV_INDEX_CVECTOR_INTERNAL_PASSWORD=${CODEARTIFACT_AUTH_TOKEN}" >> "$GITHUB_ENV"
 
       - name: Check Python licenses
-        uses: CVector-Energy/pyproject-license-check@d56c86ec80d397b5de30e3915e217c50112da00b # v0.5.1
+        uses: CVector-Energy/pyproject-license-check@fd767a3655df6df012e3f72bd6ad11d2bca99311 # v0.5.2
         with:
           app-id: ${{ vars.APP_ID }}
           app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
