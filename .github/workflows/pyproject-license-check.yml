@@ -52,3 +52,5 @@ jobs:
             "pywin32==312" = "PSF-2.0"
             # Apache-2.0; 1.7.5 publishes no CPython 3.14 wheel, so the audit resolves the private-index sdist and cannot read wheel metadata.
             "cvxpy==1.7.5" = "Apache-2.0"
+            # Apache-2.0 OR BSD-3-Clause, matching dd-trace-py, which publishes this Datadog stub as a ddtrace 4.16 dependency; the wheel declares no license metadata.
+            "ddtrace-internal==0.1.0" = "Apache-2.0;; BSD-3-Clause"
