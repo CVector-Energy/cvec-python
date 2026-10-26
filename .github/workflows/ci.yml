@@ -32,7 +32,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: CVector-Energy/python-test@b956bb181831f0ddca3496505d5823c678a926e7 # v1.1.0
+      - uses: CVector-Energy/python-test@d223d8bc5764691c1c87f9609eddad67519d44bd # v2.0.1
         with:
           python-version: ${{ matrix.python-version }}
           src-dirs: .
