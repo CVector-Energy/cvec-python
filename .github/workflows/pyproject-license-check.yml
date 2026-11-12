@@ -1,5 +1,7 @@
 name: Python License Check
 
+# This file is owned by the cvec-management-account. Local edits will be reverted.
+
 on:
   push:
 
