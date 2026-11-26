@@ -23,11 +23,11 @@ def metric_data_points_to_arrow(data_points: List[MetricDataPoint]) -> bytes:
     value_doubles = [point.value_double for point in data_points]
     value_strings = [point.value_string for point in data_points]
 
-    # Create Arrow arrays
-    names_array = pa.array(names)
+    # Keep the wire schema stable when a batch is empty or a column is all null.
+    names_array = pa.array(names, type=pa.string())
     times_array = pa.array(times, type=pa.timestamp("us", tz="UTC"))
-    value_doubles_array = pa.array(value_doubles)
-    value_strings_array = pa.array(value_strings)
+    value_doubles_array = pa.array(value_doubles, type=pa.float64())
+    value_strings_array = pa.array(value_strings, type=pa.string())
 
     # Create Arrow table
     table = pa.table(
